@@ -49,7 +49,7 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:var
 }
 #tablet-notice .tn-close:hover{background:#dbeafe}
 @media(max-width:767px){#mobile-block{display:flex!important}#app{display:none!important}}
-@media(min-width:768px) and (max-width:1199px){#tablet-notice{display:flex!important}#app{pointer-events:none}}
+@media(min-width:768px) and (max-width:1199px){#tablet-notice{display:flex!important}}
 
 /* 앱 레이아웃 */
 #app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
@@ -643,7 +643,8 @@ function switchTab(name){
   tSetup.classList.toggle('done', classes.length>0 && name!=='setup');
   if(name==='assign'){
     renderAssign();
-    requestAnimationFrame(()=>{document.getElementById('panel-assign').scrollTop=assignScrollTop;});
+    const raf = typeof requestAnimationFrame !== 'undefined' ? requestAnimationFrame : (fn=>setTimeout(fn,0));
+    raf(()=>{const p=document.getElementById('panel-assign');if(p)p.scrollTop=assignScrollTop;});
   }
   if(name==='stats')renderStats();
   if(name==='rules'){renderRulesList();renderViolations();}

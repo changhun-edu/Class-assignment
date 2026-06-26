@@ -1371,7 +1371,9 @@ function updateBadges(){
   const total=students.filter(s=>sg.includes(s.grade)).length;
   const assigned=classes.reduce((acc,c)=>acc+(assignments[c.id]?.length||0),0);
   document.getElementById('badge-unassigned').textContent=total-assigned;
-  // ⑨ 규칙 위반 배지 실시간 표시
+  // 상태 변경 시 자동 저장 (래핑 없이 직접 호출)
+  saveSession();
+  // 규칙 위반 배지 실시간 표시
   const vs=getViolations();
   const ruleTab=document.getElementById('tab-rules');
   let vBadge=ruleTab.querySelector('.violation-badge');
@@ -1418,10 +1420,7 @@ function loadSession(){
     return true;
   }catch(e){return false;}
 }
-const _oRSL=renderStudentList;renderStudentList=function(...a){_oRSL(...a);saveSession();};
-const _oRA=renderAssign;renderAssign=function(...a){_oRA(...a);saveSession();};
-const _oRRL=renderRulesList;renderRulesList=function(...a){_oRRL(...a);saveSession();};
-window.addEventListener('beforeunload',e=>{if(!students.length)return;saveSession();e.preventDefault();e.returnValue='';});
+window.addEventListener('beforeunload',e=>{if(!students.length)return;saveSession();e.preventDefault();e.returnValue=''});
 
 // ── 태블릿 배너 자동 소멸 ──
 function closeTabletNotice(){

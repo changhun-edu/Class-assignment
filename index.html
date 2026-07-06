@@ -75,7 +75,9 @@ header h1{font-size:1.05rem;font-weight:700;letter-spacing:-.3px;display:flex;al
 .tab.done{color:var(--text-sub)}
 .tab.done::before{content:'✓ ';color:var(--green);font-weight:800}
 .tab .step{display:none}
-.tab .badge{background:var(--surface2);color:var(--text-sub);font-size:.73rem;font-weight:700;padding:1px 7px;border-radius:20px;min-width:22px;text-align:center}
+.pill{display:inline-flex;align-items:center;border-radius:20px;white-space:nowrap;flex-shrink:0}
+.pill-interactive{cursor:pointer;user-select:none;transition:all .12s}
+.tab .badge{background:var(--surface2);color:var(--text-sub);font-size:.73rem;font-weight:700;padding:1px 7px;min-width:22px;text-align:center}
 .tab.active .badge{background:var(--primary-light);color:var(--primary)}
 
 /* 패널 */
@@ -112,7 +114,7 @@ label{font-size:.82rem;font-weight:600;color:var(--text-sub);margin-bottom:4px;d
 
 /* 특성 태그 - 단일 색상 체계 (반 색상과 분리) */
 .tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-.tag{padding:4px 11px;border-radius:20px;font-size:.82rem;font-weight:600;cursor:pointer;border:2px solid transparent;transition:all .12s;user-select:none}
+.tag{padding:4px 11px;font-size:.82rem;font-weight:600;border:2px solid transparent}
 .tag-우수{background:#fef9c3;color:#854d0e}.tag-우수.on{border-color:#854d0e}
 .tag-부진{background:#fee2e2;color:#991b1b}.tag-부진.on{border-color:#991b1b}
 .tag-지도{background:#ede9fe;color:#5b21b6}.tag-지도.on{border-color:#5b21b6}
@@ -209,11 +211,13 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
 .bulk-textarea{font-family:'Consolas','D2Coding',monospace;font-size:.82rem;min-height:260px;resize:vertical}
 
 /* 반 설정 */
-.grade-pill{padding:6px 16px;border-radius:20px;cursor:pointer;border:2px solid var(--border);background:var(--surface);font-size:.85rem;font-weight:600;color:var(--text-sub);transition:all .12s}
+.grade-pill{padding:6px 16px;border:2px solid var(--border);background:var(--surface);font-size:.85rem;font-weight:600;color:var(--text-sub)}
 .grade-pill.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.settings-chip{gap:6px;padding:7px 14px;border:1px solid var(--border);background:var(--surface2);font-size:.87rem;font-weight:400}
+.settings-chip.on{background:var(--primary-light)}
 
 /* 반 설정 탭 완료 배지 */
-#tab-setup .setup-done{font-size:.72rem;font-weight:700;padding:2px 7px;border-radius:20px;background:var(--green-light);color:var(--green);margin-left:2px}
+#tab-setup .setup-done{font-size:.72rem;font-weight:700;padding:2px 7px;background:var(--green-light);color:var(--green);margin-left:2px}
 
 /* 5. 빈 상태 - 모든 탭 통일 */
 .empty-state{text-align:center;padding:48px 20px;color:var(--text-muted)}
@@ -237,7 +241,7 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
 .rule-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r);margin-bottom:8px;background:var(--surface2)}
 .rule-item.type-분리{border-left:4px solid var(--red)}
 .rule-item.type-동반{border-left:4px solid var(--green)}
-.ri-badge{font-size:.73rem;font-weight:700;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.ri-badge{font-size:.73rem;font-weight:700;padding:2px 8px}
 .ri-badge.분리{background:var(--red-light);color:var(--red)}
 .ri-badge.동반{background:var(--green-light);color:var(--green)}
 .ri-names{flex:1;font-size:.87rem;font-weight:600}
@@ -281,7 +285,7 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
 .note-badge{font-size:.75rem;background:#fff1f2;color:#881337;padding:2px 6px;border-radius:4px;font-style:italic;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ⑨ 규칙 위반 배지 */
-.violation-badge{font-size:.72rem;font-weight:700;padding:2px 7px;border-radius:20px;background:#fee2e2;color:#991b1b;margin-left:4px}
+.violation-badge{font-size:.72rem;font-weight:700;padding:2px 7px;background:#fee2e2;color:#991b1b;margin-left:4px}
 
 /* 유틸 */
 .flex-row{display:flex;gap:8px;align-items:center}
@@ -337,22 +341,22 @@ body.blur-sensitive .sensitive-card::after{
   <div class="tabs">
     <div class="tab active" onclick="switchTab('setup')" id="tab-setup">
       ① 설정하기
-      <span class="badge" id="badge-rules">0</span>
+      <span class="pill badge" id="badge-rules">0</span>
     </div>
     <div class="tab" onclick="switchTab('template')" id="tab-template">
       ② 서식받기
     </div>
     <div class="tab" onclick="switchTab('upload')" id="tab-upload">
       ③ 엑셀업로드
-      <span class="badge" id="badge-upload-students">0</span>
+      <span class="pill badge" id="badge-upload-students">0</span>
     </div>
     <div class="tab" onclick="switchTab('assign')" id="tab-assign">
       ④ 배정 결과
-      <span class="badge" id="badge-unassigned">0</span>
+      <span class="pill badge" id="badge-unassigned">0</span>
     </div>
     <div class="tab" onclick="switchTab('students')" id="tab-students">
       ⑤ 개별 수정
-      <span class="badge" id="badge-students">0</span>
+      <span class="pill badge" id="badge-students">0</span>
     </div>
     <div class="tab" onclick="switchTab('stats')" id="tab-stats">
       ⑥ 균형 통계
@@ -541,11 +545,11 @@ body.blur-sensitive .sensitive-card::after{
         <div class="mt-12">
           <label>① 기준 학년 (현재 학년) — 배정 대상 학생들의 현재 학년</label>
           <div class="flex-row mt-4" id="src-grade-pills">
-            <span class="grade-pill active" onclick="toggleSrcGrade(this,'5')" data-grade="5">5학년</span>
-            <span class="grade-pill" onclick="toggleSrcGrade(this,'4')" data-grade="4">4학년</span>
-            <span class="grade-pill" onclick="toggleSrcGrade(this,'3')" data-grade="3">3학년</span>
-            <span class="grade-pill" onclick="toggleSrcGrade(this,'2')" data-grade="2">2학년</span>
-            <span class="grade-pill" onclick="toggleSrcGrade(this,'1')" data-grade="1">1학년</span>
+            <span class="pill pill-interactive grade-pill active" onclick="toggleSrcGrade(this,'5')" data-grade="5">5학년</span>
+            <span class="pill pill-interactive grade-pill" onclick="toggleSrcGrade(this,'4')" data-grade="4">4학년</span>
+            <span class="pill pill-interactive grade-pill" onclick="toggleSrcGrade(this,'3')" data-grade="3">3학년</span>
+            <span class="pill pill-interactive grade-pill" onclick="toggleSrcGrade(this,'2')" data-grade="2">2학년</span>
+            <span class="pill pill-interactive grade-pill" onclick="toggleSrcGrade(this,'1')" data-grade="1">1학년</span>
           </div>
         </div>
         <div class="form-row form-row-2 mt-16">
@@ -566,17 +570,17 @@ body.blur-sensitive .sensitive-card::after{
       </div>
       <div class="card sensitive-card" style="margin-top:16px">
         <div class="flex-row-between" style="cursor:pointer" onclick="toggleAccordion('tag-settings-body')">
-          <div class="card-title" style="margin:0">✅ 사용할 학생 특성 설정</div>
+          <div class="card-title" style="margin:0">✅ 사용할 학생 특성 &amp; 배정 규칙</div>
           <div style="display:flex;align-items:center;gap:8px">
             <span id="tag-settings-summary" style="font-size:.82rem;color:var(--text-sub);font-weight:400"></span>
             <span id="tag-settings-chevron" style="font-size:.8rem;color:var(--text-muted)">▸</span>
           </div>
         </div>
         <div id="tag-settings-body" style="display:none;margin-top:12px">
-          <div style="font-size:.82rem;color:var(--text-sub);margin-bottom:10px;line-height:1.6">
-            체크 해제한 특성은 학생 입력 화면, 엑셀 서식/업로드, 자동 배치 균형 기준, 통계·출력 결과에서 모두 제외됩니다.
+          <div style="font-size:.82rem;color:var(--text-sub);margin-bottom:12px;line-height:1.6">
+            성별은 항상 균등하게 배분됩니다. 체크된 특성은 학생 입력·엑셀 서식/업로드·통계에 반영되고, 옆의 배지대로 자동 배치에 사용됩니다. 체크 해제하면 모든 곳에서 제외됩니다.
           </div>
-          <div class="flex-row" id="tag-enable-list" style="flex-wrap:wrap;gap:8px"></div>
+          <div id="tag-enable-list" style="display:flex;flex-direction:column;gap:8px"></div>
           <div class="mt-12" id="custom-tag-form-toggle">
             <button class="btn btn-secondary btn-sm" onclick="showCustomTagForm()">+ 특성 추가</button>
           </div>
@@ -597,33 +601,13 @@ body.blur-sensitive .sensitive-card::after{
               <button class="btn btn-secondary btn-sm" onclick="hideCustomTagForm()">취소</button>
             </div>
           </div>
-        </div>
-      </div>
-      <div class="card sensitive-card" style="margin-top:16px">
-        <div class="flex-row-between" style="cursor:pointer" onclick="toggleAccordion('rules-body')">
-          <div class="card-title" style="margin:0">📐 배정 규칙</div>
-          <div style="display:flex;align-items:center;gap:8px">
+          <div style="border-top:1px solid var(--border);margin-top:20px;padding-top:16px">
+          <div class="flex-row-between" style="margin-bottom:10px">
+            <b style="font-size:.95rem">🔗 분리·동반 조건</b>
             <span id="rules-summary" style="font-size:.82rem;color:var(--text-sub);font-weight:400">0개 조건 등록됨</span>
-            <span id="rules-chevron" style="font-size:.8rem;color:var(--text-muted)">▸</span>
           </div>
-        </div>
-        <div id="rules-body" style="display:none;margin-top:12px">
-          <div style="font-size:.87rem;color:var(--text-sub);line-height:1.9;margin-bottom:14px">
-            자동 배치 시 아래 기준으로 균등 배분하고, 분리·동반 조건은 그 위에 우선 적용됩니다:
-            <ul style="margin:6px 0 0 18px" id="balance-criteria-list">
-              <li>남/여 비율 균등</li>
-              <li>학습우수·부진·생활지도 분산 (희소 특성 우선)</li>
-              <li id="balance-doum-desc">학습도움반 1명 = 실질 2명으로 계산</li>
-              <li>다문화·기초수급 고려</li>
-            </ul>
-          </div>
-          <div class="mt-12" style="margin-bottom:16px">
-            <label>학습도움반 가중치 (1명 = 몇 명으로 계산할지)</label>
-            <input type="number" id="opt-doum-weight" min="1" max="5" value="2" style="width:100px" oninput="onDoumWeightChange()">
-          </div>
-          <div style="border-top:1px solid var(--border);padding-top:16px">
           <div style="font-size:.82rem;color:var(--text-sub);margin-bottom:12px;line-height:1.6">
-            <b>🔗 분리·동반 조건</b> — 분리·동반 태그를 켜면 개별 수정 화면에서 자동 등록되고, 그 외 임의의 두 학생을 분리/동반시키고 싶을 때는 여기서 직접 추가하세요.
+            위 "분리·동반" 태그를 켜면 개별 수정 화면에서 자동 등록되고, 그 외 임의의 두 학생을 분리/동반시키고 싶을 때는 여기서 직접 추가하세요. 이 조건은 자동 배치 시 다른 균형 기준보다 우선 적용됩니다.
           </div>
           <div style="display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start">
             <div class="card" style="box-shadow:none;border:1px solid var(--border)">
@@ -663,7 +647,7 @@ body.blur-sensitive .sensitive-card::after{
                 </div>
               </div>
               <div id="rules-list">
-                <div class="empty-state" style="padding:36px 20px"><div class="icon">🔗</div><p>등록된 조건이 없습니다.<br>왼쪽에서 분리·동반 조건을 추가하거나, 학생 태그의 분리·동반을 이용하세요.</p></div>
+                <div class="empty-state" style="padding:36px 20px"><div class="icon">🔗</div><p>등록된 조건이 없습니다.<br>왼쪽에서 분리·동반 조건을 추가하거나, 위의 분리·동반 특성을 이용하세요.</p></div>
               </div>
             </div>
           </div>
@@ -763,8 +747,6 @@ function onDoumWeightChange(){
   if(v>5)v=5;
   el.value=v;
   doumWeight=v;
-  const desc=document.getElementById('balance-doum-desc');
-  if(desc)desc.textContent=`학습도움반 1명 = 실질 ${v}명으로 계산`;
   updateBadges();
 }
 let reqRuleType='분리', reqEditRuleType='분리'; // 특별부탁 분리/동반 선택 (학생 등록/수정 폼)
@@ -893,7 +875,7 @@ function renderTagSelectors(){
   const defs=allTagDefs().filter(t=>enabledTags.has(t.key));
   const manual=document.getElementById('tag-selector');
   const edit=document.getElementById('edit-tag-selector');
-  const html=defs.map(t=>`<span class="tag tag-${t.key}" data-tag="${t.key}">${t.icon} ${t.label}</span>`).join('');
+  const html=defs.map(t=>`<span class="pill pill-interactive tag tag-${t.key}" data-tag="${t.key}">${t.icon} ${t.label}</span>`).join('');
   if(manual){
     manual.innerHTML=html;
     manual.querySelectorAll('.tag').forEach(el=>{
@@ -915,11 +897,26 @@ function renderTagSelectors(){
 }
 function renderTagEnableSettings(){
   const c=document.getElementById('tag-enable-list');if(!c)return;
-  c.innerHTML=allTagDefs().map(t=>`
-    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.87rem;font-weight:400;padding:5px 12px;border:1px solid var(--border);border-radius:20px;background:${enabledTags.has(t.key)?'var(--primary-light)':'var(--surface2)'}">
-      <input type="checkbox" ${enabledTags.has(t.key)?'checked':''} onchange="toggleEnabledTag('${t.key}',this.checked)"> ${t.icon} ${t.label}
-      ${t.custom?`<span onclick="event.preventDefault();removeCustomTag('${t.key}')" title="특성 삭제" style="color:var(--text-muted);font-weight:700;padding:0 2px">×</span>`:''}
-    </label>`).join('');
+  c.innerHTML=allTagDefs().map(t=>{
+    const checked=enabledTags.has(t.key);
+    const isBalance=BALANCE_TAGS.includes(t.key)||(t.custom&&t.balance);
+    let statusHtml;
+    if(t.key==='도움'){
+      statusHtml=`<span style="display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--text-sub);white-space:nowrap">가중치 1명=<input type="number" id="opt-doum-weight" min="1" max="5" value="${doumWeight}" style="width:48px;padding:3px 6px" oninput="onDoumWeightChange()" onclick="event.stopPropagation()" ${checked?'':'disabled'}>명</span>`;
+    }else if(t.key==='분리동반'){
+      statusHtml=`<span class="pill" style="background:var(--surface2);color:var(--text-sub);font-size:.75rem;padding:3px 10px;white-space:nowrap">🔗 아래 조건에서 관리</span>`;
+    }else if(isBalance){
+      statusHtml=`<span class="pill" style="background:var(--green-light);color:var(--green);font-size:.75rem;padding:3px 10px;white-space:nowrap">⚖️ 균형 반영</span>`;
+    }else{
+      statusHtml=`<span style="font-size:.75rem;color:var(--text-muted);white-space:nowrap">참고용 정보</span>`;
+    }
+    return`<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--r);background:${checked?'var(--primary-light)':'var(--surface2)'};cursor:pointer">
+      <input type="checkbox" ${checked?'checked':''} onchange="toggleEnabledTag('${t.key}',this.checked)">
+      <span style="flex:1;display:flex;align-items:center;gap:6px;font-weight:600">${t.icon} ${t.label}</span>
+      ${statusHtml}
+      ${t.custom?`<span onclick="event.preventDefault();removeCustomTag('${t.key}')" title="특성 삭제" style="color:var(--text-muted);font-weight:700;cursor:pointer;padding:0 4px">×</span>`:''}
+    </label>`;
+  }).join('');
   updateTagSettingsSummary();
 }
 function updateTagSettingsSummary(){
@@ -967,7 +964,7 @@ function toggleEnabledTag(key,checked){
 // ── 아코디언(민감 설정 기본 접힘) ──
 function toggleAccordion(bodyId){
   const body=document.getElementById(bodyId);if(!body)return;
-  const chevronMap={'tag-settings-body':'tag-settings-chevron','rules-body':'rules-chevron'};
+  const chevronMap={'tag-settings-body':'tag-settings-chevron'};
   const chevron=document.getElementById(chevronMap[bodyId]);
   const open=body.style.display==='none';
   body.style.display=open?'block':'none';
@@ -1310,7 +1307,7 @@ function applySetup(){
   // 반 설정 탭에 완료 배지 표시
   const setupTab=document.getElementById('tab-setup');
   let doneBadge=setupTab.querySelector('.setup-done');
-  if(!doneBadge){doneBadge=document.createElement('span');doneBadge.className='setup-done';setupTab.appendChild(doneBadge);}
+  if(!doneBadge){doneBadge=document.createElement('span');doneBadge.className='pill setup-done';setupTab.appendChild(doneBadge);}
   doneBadge.textContent=`${classes.length}반 ✓`;
   // 적용 버튼 피드백
   const btn=document.querySelector('[onclick="applySetup()"]');
@@ -1788,7 +1785,7 @@ function renderRulesList(){
   c.innerHTML=rules.map(r=>{
     const sA=students.find(s=>s.id===r.idA),sB=students.find(s=>s.id===r.idB);
     const nA=sA?`${sA.name}(${sA.cls}반)`:'(삭제됨)',nB=sB?`${sB.name}(${sB.cls}반)`:'(삭제됨)';
-    return`<div class="rule-item type-${r.type}"><span class="ri-badge ${r.type}">${r.type==='분리'?'🚫 분리':'🤝 동반'}</span><span class="ri-names">${nA} ↔ ${nB}</span><span class="ri-note">${r.note||''}</span><span class="ri-del" onclick="deleteRule('${r.id}')">✕</span></div>`;
+    return`<div class="rule-item type-${r.type}"><span class="pill ri-badge ${r.type}">${r.type==='분리'?'🚫 분리':'🤝 동반'}</span><span class="ri-names">${nA} ↔ ${nB}</span><span class="ri-note">${r.note||''}</span><span class="ri-del" onclick="deleteRule('${r.id}')">✕</span></div>`;
   }).join('');
 }
 function getViolations(){
@@ -1831,7 +1828,7 @@ function updateBadges(){
   const ruleTab=document.getElementById('tab-setup');
   let vBadge=ruleTab.querySelector('.violation-badge');
   if(vs.length){
-    if(!vBadge){vBadge=document.createElement('span');vBadge.className='violation-badge';ruleTab.appendChild(vBadge);}
+    if(!vBadge){vBadge=document.createElement('span');vBadge.className='pill violation-badge';ruleTab.appendChild(vBadge);}
     vBadge.textContent='위반 '+vs.length;
   } else {
     if(vBadge)vBadge.remove();
@@ -1942,10 +1939,6 @@ function loadSession(){
     enabledTags=sanitizeEnabledTags(data.enabledTags);
     lastDownloadedVersionId=data.lastDownloadedVersionId||null;
     doumWeight=data.doumWeight||2;
-    const dwEl=document.getElementById('opt-doum-weight');
-    if(dwEl)dwEl.value=doumWeight;
-    const desc=document.getElementById('balance-doum-desc');
-    if(desc)desc.textContent=`학습도움반 1명 = 실질 ${doumWeight}명으로 계산`;
     document.querySelectorAll('#src-grade-pills .grade-pill').forEach(el=>{el.classList.toggle('active',selectedSrcGrades.has(el.dataset.grade));});
     autoSetTargetGrade();
     return true;

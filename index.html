@@ -48,6 +48,8 @@ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:var
   color:#3b82f6;font-size:1.1rem;line-height:1;padding:4px 6px;border-radius:4px;
 }
 #tablet-notice .tn-close:hover{background:#dbeafe}
+#tablet-notice-reopen{display:none;position:fixed;bottom:20px;left:20px;z-index:998;width:44px;height:44px;border-radius:50%;border:none;background:#1e3a5f;color:#fff;font-size:1.2rem;box-shadow:var(--shadow-lg);cursor:pointer}
+@media(min-width:768px) and (max-width:1199px){#tablet-notice-reopen.show{display:block}}
 @media(max-width:767px){#mobile-block{display:flex!important}#app{display:none!important}}
 @media(min-width:768px) and (max-width:1199px){#tablet-notice{display:flex!important}}
 
@@ -264,6 +266,16 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
 
 /* 토스트 - 우하단 고정 */
 .toast{position:fixed;bottom:24px;right:24px;z-index:9999;background:#1a2233;color:#fff;padding:12px 20px;border-radius:var(--r);font-size:.87rem;font-weight:600;box-shadow:var(--shadow-lg);animation:slideUp .2s ease;display:flex;align-items:center;gap:8px}
+.undo-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;background:#1a2233;color:#fff;padding:12px 16px;border-radius:var(--r);font-size:.87rem;font-weight:600;box-shadow:var(--shadow-lg);animation:slideUp .2s ease;display:flex;align-items:center;gap:12px;max-width:520px}
+.undo-toast button{background:none;border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:6px;padding:4px 10px;font-size:.82rem;font-weight:700;cursor:pointer;white-space:nowrap}
+.undo-toast button.undo-btn{background:var(--primary);border-color:var(--primary)}
+#backup-reminder-banner{display:none;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;background:var(--amber-light);color:var(--amber);border-bottom:1px solid #fde68a;font-size:.87rem;font-weight:600}
+#backup-reminder-banner button{background:var(--amber);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:.82rem;font-weight:700;cursor:pointer;white-space:nowrap}
+#backup-reminder-banner .brb-close{background:none;color:var(--amber);border:none;font-size:1rem;cursor:pointer;padding:0 4px}
+.step-progress{display:flex;gap:4px;padding:0 20px 8px;background:var(--surface)}
+.step-dot{flex:1;height:4px;border-radius:2px;background:var(--border);transition:background .2s}
+.step-dot.done{background:var(--primary-light)}
+.step-dot.active{background:var(--primary)}
 @keyframes slideUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
 
 /* note-badge */
@@ -275,7 +287,14 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
 /* 유틸 */
 .flex-row{display:flex;gap:8px;align-items:center}
 .flex-row-between{display:flex;justify-content:space-between;align-items:center}
-.mt-4{margin-top:4px}.mt-12{margin-top:12px}.mt-16{margin-top:16px}
+.mt-4{margin-top:4px}.mt-12{margin-top:12px}.mt-16{margin-top:16px}.sensitive-card{position:relative}
+body.blur-sensitive .sensitive-card > *{filter:blur(6px);pointer-events:none;user-select:none}
+body.blur-sensitive .sensitive-card::after{
+  content:"🔒 가려짐 (헤더의 '민감정보 보기'를 눌러 확인)";
+  position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;
+  padding:0 16px;font-size:.85rem;font-weight:700;color:var(--text-sub);
+  background:rgba(255,255,255,.55);border-radius:var(--r-lg);z-index:2;
+}
 </style>
 </head>
 <body>
@@ -294,48 +313,71 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
     </div>
     <button class="tn-close" onclick="closeTabletNotice()" title="닫기">✕</button>
   </div>
+  <button id="tablet-notice-reopen" onclick="reopenTabletNotice()" title="태블릿 안내 다시보기">💻</button>
   <header>
     <div class="header-left">
-      <h1 onclick="switchTab('students')" style="cursor:pointer" title="홈으로 이동"><span>🏫</span> 스마트 반편성</h1>
+      <h1 onclick="switchTab('setup')" style="cursor:pointer" title="홈으로 이동"><span>🏫</span> 스마트 반편성</h1>
       <span class="header-sub">🔒 개인정보 미저장 · 작업 후 엑셀로 내보내세요</span>
     </div>
     <div class="header-actions">
+      <button class="btn btn-secondary btn-sm" onclick="quickAddStudent()">➕ 학생 빠른추가</button>
+      <button class="btn btn-secondary btn-sm" id="btn-blur-toggle" onclick="toggleSensitiveBlur()">👁 민감정보 가리기</button>
       <button class="btn btn-destructive btn-sm" onclick="clearAll()">🗑 전체초기화</button>
       <button class="btn btn-excel btn-sm" onclick="exportExcel()">📊 엑셀 출력</button>
     </div>
   </header>
 
+  <div id="backup-reminder-banner">
+    <span id="backup-reminder-text"></span>
+    <div class="flex-row">
+      <button onclick="switchTab('assign');document.getElementById('backup-reminder-banner').style.display='none'">📊 지금 엑셀로 백업</button>
+      <button class="brb-close" onclick="dismissBackupReminder()" title="닫기">✕</button>
+    </div>
+  </div>
+
   <div class="tabs">
-    <div class="tab active" onclick="switchTab('students')" id="tab-students">
-      학생 입력
-      <span class="badge" id="badge-students">0</span>
-    </div>
-    <div class="tab" onclick="switchTab('setup')" id="tab-setup">
-      반 설정
-    </div>
-    <div class="tab" onclick="switchTab('rules')" id="tab-rules">
-      배정 규칙
+    <div class="tab active" onclick="switchTab('setup')" id="tab-setup">
+      ① 설정하기
       <span class="badge" id="badge-rules">0</span>
     </div>
+    <div class="tab" onclick="switchTab('template')" id="tab-template">
+      ② 서식받기
+    </div>
+    <div class="tab" onclick="switchTab('upload')" id="tab-upload">
+      ③ 엑셀업로드
+      <span class="badge" id="badge-upload-students">0</span>
+    </div>
     <div class="tab" onclick="switchTab('assign')" id="tab-assign">
-      배정 작업
+      ④ 배정 결과
       <span class="badge" id="badge-unassigned">0</span>
     </div>
-    <div class="tab" onclick="switchTab('stats')" id="tab-stats">
-      균형 통계
+    <div class="tab" onclick="switchTab('students')" id="tab-students">
+      ⑤ 개별 수정
+      <span class="badge" id="badge-students">0</span>
     </div>
+    <div class="tab" onclick="switchTab('stats')" id="tab-stats">
+      ⑥ 균형 통계
+    </div>
+  </div>
+  <div class="step-progress" id="step-progress">
+    <span class="step-dot" data-step="setup"></span>
+    <span class="step-dot" data-step="template"></span>
+    <span class="step-dot" data-step="upload"></span>
+    <span class="step-dot" data-step="assign"></span>
+    <span class="step-dot" data-step="students"></span>
+    <span class="step-dot" data-step="stats"></span>
+
   </div>
 
   <div class="content">
 
-    <!-- ① 학생 입력 -->
-    <div class="panel active" id="panel-students">
+    <!-- ⑤ 개별 수정 -->
+    <div class="panel" id="panel-students">
       <div class="input-section">
         <div class="card">
           <!-- 서브탭 -->
           <div class="input-sub-tabs">
             <div class="input-sub-tab active" onclick="switchInputTab('manual')">✏️ 직접 입력</div>
-            <div class="input-sub-tab" onclick="switchInputTab('excel')">📂 엑셀 올리기</div>
             <div class="input-sub-tab" onclick="switchInputTab('bulk')">📋 텍스트 입력</div>
           </div>
 
@@ -349,70 +391,34 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
             </div>
             <div class="form-row form-row-3 mt-12">
               <div><label>학년</label>
-                <select id="inp-grade"><option value="5">5학년</option><option value="4">4학년</option><option value="6">6학년</option></select></div>
+                <select id="inp-grade"><option value="5">5학년</option><option value="4">4학년</option><option value="3">3학년</option><option value="2">2학년</option><option value="1">1학년</option></select></div>
               <div><label>반</label>
-                <select id="inp-class"><option value="1">1반</option><option value="2">2반</option><option value="3">3반</option><option value="4">4반</option><option value="5">5반</option><option value="6">6반</option></select></div>
+                <select id="inp-class"></select></div>
               <div><label>번호</label><input type="number" id="inp-num" min="1" max="40" placeholder="번호"></div>
             </div>
             <div class="mt-12">
               <label>특성 (복수 선택)</label>
-              <div class="tags" id="tag-selector">
-                <span class="tag tag-우수" onclick="toggleTag(this,'우수')">⭐ 학습우수</span>
-                <span class="tag tag-부진" onclick="toggleTag(this,'부진')">📉 학습부진</span>
-                <span class="tag tag-지도" onclick="toggleTag(this,'지도')">⚠️ 생활지도</span>
-                <span class="tag tag-수급" onclick="toggleTag(this,'수급')">🔵 기초수급</span>
-                <span class="tag tag-다문화" onclick="toggleTag(this,'다문화')">🌏 다문화</span>
-                <span class="tag tag-도움" onclick="toggleTag(this,'도움')">♿ 학습도움반</span>
-                <span class="tag tag-쌍둥이" onclick="toggleTag(this,'쌍둥이')">👥 쌍둥이</span>
-                <span class="tag tag-부탁" onclick="toggleTag(this,'부탁')">📝 특별부탁</span>
+              <div class="tags" id="tag-selector"></div>
+            </div>
+            <div class="mt-12" id="note-section" style="display:none">
+              <label>사유 메모</label>
+              <input type="text" id="inp-note" placeholder="예: 쌍둥이 / ○○와 같은 반 배정 요청"></div>
+            <div class="mt-12" id="req-rule-section" style="display:none;border:1px dashed var(--border);border-radius:var(--r);padding:12px">
+              <label>배정 필수 조건</label>
+              <div class="flex-row mt-4">
+                <label class="rule-type-btn active sep" id="rtype-req-분리" onclick="selectReqRuleType('req','분리')">🚫 반드시 분리</label>
+                <label class="rule-type-btn" id="rtype-req-동반" onclick="selectReqRuleType('req','동반')">🤝 반드시 동반</label>
+              </div>
+              <div class="mt-12"><label>대상 학생</label>
+                <div style="position:relative">
+                  <input type="text" id="rule-search-req" placeholder="이름 검색..." oninput="searchRuleStudent('req')" autocomplete="off">
+                  <div id="rule-dropdown-req" class="rule-dropdown" style="display:none"></div>
+                </div>
+                <div id="rule-selected-req" class="rule-selected-student" style="display:none"></div>
               </div>
             </div>
-            <div class="mt-12" id="twin-section" style="display:none">
-              <label>쌍둥이 상대방 이름</label>
-              <input type="text" id="inp-twin" placeholder="쌍둥이 상대방 이름"></div>
-            <div class="mt-12" id="note-section" style="display:none">
-              <label>부탁 메모</label>
-              <input type="text" id="inp-note" placeholder="예: ○○와 같은 반 배정 요청"></div>
             <div class="mt-16">
               <button class="btn btn-primary" style="width:100%" onclick="addStudent()">+ 학생 추가</button>
-            </div>
-          </div>
-
-          <!-- 엑셀 업로드 -->
-          <div class="input-sub-panel" id="isub-excel">
-            <div id="excel-dropzone"
-              ondragover="event.preventDefault();this.classList.add('drag-hover')"
-              ondragleave="this.classList.remove('drag-hover')"
-              ondrop="handleExcelDrop(event)">
-              <div class="dropzone-icon">📊</div>
-              <div class="dropzone-text">엑셀 파일을 여기에 드래그하거나 클릭</div>
-              <div class="dropzone-sub">.xlsx / .xls 지원</div>
-              <input type="file" id="excel-file-input" accept=".xlsx,.xls" style="display:none" onchange="handleExcelFile(this.files[0])">
-            </div>
-            <button class="btn btn-secondary mt-12" style="width:100%;margin-top:8px" onclick="document.getElementById('excel-file-input').click()">📁 파일 선택</button>
-            <div style="margin-top:10px">
-              <button class="btn btn-secondary btn-sm" onclick="toggleFormatGuide()" id="fmt-toggle-btn">📋 서식 안내 보기</button>
-              <div id="format-guide" style="display:none;margin-top:10px;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;font-size:.82rem">
-                <div style="background:var(--surface2);padding:8px 12px;font-weight:700;color:var(--text-sub)">필수 열 (헤더명 기준 자동 인식)</div>
-                <div style="padding:8px 12px;line-height:2">
-                  <b>학년, 반, 번호, 이름, 성별</b> (필수)<br>
-                  학습우수, 학습부진, 생활지도, 기초수급, 다문화, 학습도움반, 쌍둥이, 특별부탁 (O 또는 1)<br>
-                  메모 (자유 입력)
-                </div>
-                <div style="padding:4px 12px 10px">
-                  <button class="btn btn-success btn-sm" onclick="downloadSampleExcel()">⬇ 서식 파일 다운로드</button>
-                </div>
-              </div>
-            </div>
-            <div id="excel-preview" style="display:none;margin-top:12px">
-              <div style="font-size:.82rem;font-weight:700;color:var(--text-sub);margin-bottom:6px" id="preview-summary"></div>
-              <div style="overflow-x:auto;max-height:200px;border:1px solid var(--border);border-radius:var(--r)">
-                <table class="student-table" id="preview-table" style="font-size:.78rem"></table>
-              </div>
-              <div style="display:flex;gap:8px;margin-top:10px">
-                <button class="btn btn-primary" style="flex:1" onclick="confirmExcelImport()">✅ 등록 확인</button>
-                <button class="btn btn-secondary" onclick="cancelExcelImport()">취소</button>
-              </div>
             </div>
           </div>
 
@@ -453,96 +459,225 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
       </div>
     </div>
 
-    <!-- ② 반 설정 -->
-    <div class="panel" id="panel-setup">
+    <!-- ③ 엑셀 업로드 -->
+    <div class="panel" id="panel-upload">
+      <div style="display:grid;grid-template-columns:380px 1fr;gap:20px;align-items:start">
+        <div class="card">
+          <div class="card-title">📂 엑셀 업로드</div>
+          <div id="upload-version-banner" style="display:none;margin-bottom:10px;padding:8px 12px;border-radius:var(--r);font-size:.82rem;background:var(--amber-light);color:var(--amber);border:1px solid #fde68a"></div>
+          <div id="excel-dropzone"
+            ondragover="event.preventDefault();this.classList.add('drag-hover')"
+            ondragleave="this.classList.remove('drag-hover')"
+            ondrop="handleExcelDrop(event)">
+            <div class="dropzone-icon">📊</div>
+            <div class="dropzone-text">엑셀 파일을 여기에 드래그하거나 클릭</div>
+            <div class="dropzone-sub">.xlsx / .xls 지원</div>
+            <input type="file" id="excel-file-input" accept=".xlsx,.xls" style="display:none" onchange="handleExcelFile(this.files[0])">
+          </div>
+          <button class="btn btn-secondary mt-12" style="width:100%;margin-top:8px" onclick="document.getElementById('excel-file-input').click()">📁 파일 선택</button>
+          <div class="mt-12" style="font-size:.82rem;color:var(--text-sub);line-height:1.7">
+            ② 서식받기 탭에서 받은 파일을 그대로 업로드하세요.<br>
+            서식 없이 직접 만든 파일도 헤더명이 일치하면 인식됩니다.
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">📋 업로드 결과</div>
+          <div id="excel-preview" style="display:none">
+            <div style="font-size:.82rem;font-weight:700;color:var(--text-sub);margin-bottom:6px" id="preview-summary"></div>
+            <div id="duplicate-warning" style="display:none;margin-bottom:10px;padding:10px 12px;border-radius:var(--r);background:var(--red-light);border:1px solid #fecaca;font-size:.85rem"></div>
+            <div style="overflow-x:auto;max-height:280px;border:1px solid var(--border);border-radius:var(--r)">
+              <table class="student-table" id="preview-table" style="font-size:.78rem"></table>
+            </div>
+            <div style="display:flex;gap:8px;margin-top:10px">
+              <button class="btn btn-primary" style="flex:1" onclick="confirmExcelImport()">✅ 등록 확인</button>
+              <button class="btn btn-secondary" onclick="cancelExcelImport()">취소</button>
+            </div>
+            <div id="post-import-actions" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+              <div style="font-size:.85rem;color:var(--text-sub);margin-bottom:8px">등록이 완료되었습니다. 배정 필수 조건(분리/동반)이 있다면 먼저 등록하세요.</div>
+              <div class="flex-row">
+                <button class="btn btn-secondary btn-sm" onclick="switchTab('setup')">🔗 배정 필수 조건 등록하러 가기</button>
+                <button class="btn btn-secondary btn-sm" onclick="quickAddStudent()">➕ 빠진 학생 추가</button>
+                <button class="btn btn-primary btn-sm" onclick="runAutoAssignFromUpload()">🔀 바로 자동 배치 실행</button>
+              </div>
+            </div>
+          </div>
+          <div id="upload-empty" class="empty-state">
+            <div class="icon">📭</div>
+            <p>업로드된 파일이 없습니다.<br>왼쪽에서 엑셀 파일을 올려주세요.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ② 서식받기 -->
+    <div class="panel" id="panel-template">
+      <div class="card" style="max-width:640px">
+        <div class="card-title">⬇️ 학생 명단 서식 다운로드</div>
+        <div id="template-version-banner" style="display:none;margin-bottom:12px;padding:8px 12px;border-radius:var(--r);font-size:.82rem;background:var(--amber-light);color:var(--amber);border:1px solid #fde68a"></div>
+        <div style="font-size:.87rem;color:var(--text-sub);line-height:1.7;margin-bottom:12px">
+          ① 설정하기에서 정한 반 수·특성 항목이 서식에 자동으로 반영됩니다.<br>
+          학년-반-번호는 <b>전년도 기준</b>입니다.
+        </div>
+        <button class="btn btn-success" style="width:100%" onclick="downloadSampleExcel()">⬇ 서식 파일 다운로드</button>
+        <div style="margin-top:14px">
+          <button class="btn btn-secondary btn-sm" onclick="toggleFormatGuide()" id="fmt-toggle-btn">📋 서식 안내 보기</button>
+          <div id="format-guide" style="display:none;margin-top:10px;border:1px solid var(--border);border-radius:var(--r);overflow:hidden;font-size:.82rem">
+            <div style="background:var(--surface2);padding:8px 12px;font-weight:700;color:var(--text-sub)">필수 열 (헤더명 기준 자동 인식)</div>
+            <div style="padding:8px 12px;line-height:2">
+              <b>학년, 반, 번호, 이름, 성별</b> (필수)<br>
+              <span id="format-guide-tags"></span> (O 또는 1)<br>
+              메모 (자유 입력)
+            </div>
+          </div>
+        </div>
+        <div class="mt-16"><button class="btn btn-primary" style="width:100%" onclick="switchTab('upload')">→ 작성 완료 후 엑셀 업로드로 이동</button></div>
+      </div>
+    </div>
+
+    <!-- ① 설정하기 -->
+    <div class="panel active" id="panel-setup">
       <div class="card" style="max-width:600px">
         <div class="card-title">⚙️ 편성할 학년 및 반 수 설정</div>
-        <div class="form-row form-row-2">
-          <div><label>편성 대상 학년</label>
-            <select id="setup-grade"><option value="6">6학년 (다음 학년도)</option><option value="5">5학년</option><option value="4">4학년</option></select></div>
-          <div><label>편성할 반 수</label>
-            <select id="setup-num-classes"><option value="2">2반</option><option value="3">3반</option><option value="4">4반</option><option value="5">5반</option><option value="6">6반</option></select></div>
-        </div>
         <div class="mt-12">
-          <label>기준 학년 (현재 학년)</label>
+          <label>① 기준 학년 (현재 학년) — 배정 대상 학생들의 현재 학년</label>
           <div class="flex-row mt-4" id="src-grade-pills">
             <span class="grade-pill active" onclick="toggleSrcGrade(this,'5')" data-grade="5">5학년</span>
             <span class="grade-pill" onclick="toggleSrcGrade(this,'4')" data-grade="4">4학년</span>
             <span class="grade-pill" onclick="toggleSrcGrade(this,'3')" data-grade="3">3학년</span>
+            <span class="grade-pill" onclick="toggleSrcGrade(this,'2')" data-grade="2">2학년</span>
+            <span class="grade-pill" onclick="toggleSrcGrade(this,'1')" data-grade="1">1학년</span>
           </div>
         </div>
+        <div class="form-row form-row-2 mt-16">
+          <div><label>② 편성 대상 학년 (다음 학년도)</label>
+            <select id="setup-grade"><option value="6">6학년</option><option value="5">5학년</option><option value="4">4학년</option><option value="3">3학년</option><option value="2">2학년</option></select>
+            <div id="target-grade-hint" style="font-size:.78rem;color:var(--text-sub);margin-top:4px">기준 학년(5학년) 기준 자동 설정됨</div>
+          </div>
+          <div><label>편성할 반 수 (최대 15반)</label>
+            <input type="number" id="setup-num-classes" min="1" max="15" value="4" oninput="clampNumClasses()"></div>
+        </div>
+
         <div class="mt-16"><button class="btn btn-primary" onclick="applySetup()">✅ 설정 적용</button></div>
       </div>
       <div class="card mt-16" style="margin-top:16px;max-width:600px">
         <div class="card-title">🏷️ 반 이름 설정</div>
         <div id="class-name-inputs" class="form-row"></div>
       </div>
-      <div class="card mt-16" style="margin-top:16px;max-width:600px">
-        <div class="card-title">⚖️ 자동 배치 균형 기준</div>
+      <div class="card mt-16 sensitive-card" style="margin-top:16px;max-width:600px">
+        <div class="flex-row-between" style="cursor:pointer" onclick="toggleAccordion('tag-settings-body')">
+          <div class="card-title" style="margin:0">✅ 사용할 학생 특성 설정</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="tag-settings-summary" style="font-size:.82rem;color:var(--text-sub);font-weight:400"></span>
+            <span id="tag-settings-chevron" style="font-size:.8rem;color:var(--text-muted)">▸</span>
+          </div>
+        </div>
+        <div id="tag-settings-body" style="display:none;margin-top:12px">
+          <div style="font-size:.82rem;color:var(--text-sub);margin-bottom:10px;line-height:1.6">
+            체크 해제한 특성은 학생 입력 화면, 엑셀 서식/업로드, 자동 배치 균형 기준, 통계·출력 결과에서 모두 제외됩니다.
+          </div>
+          <div class="flex-row" id="tag-enable-list" style="flex-wrap:wrap;gap:8px"></div>
+          <div class="mt-12" id="custom-tag-form-toggle">
+            <button class="btn btn-secondary btn-sm" onclick="showCustomTagForm()">+ 특성 추가</button>
+          </div>
+          <div class="mt-12" id="custom-tag-form" style="display:none;border:1px dashed var(--border);border-radius:var(--r);padding:12px">
+            <div class="form-row form-row-2">
+              <div><label>특성 이름</label><input type="text" id="ctag-name" placeholder="예: 안경 착용" maxlength="8"></div>
+              <div><label>아이콘</label>
+                <select id="ctag-icon">
+                  <option value="🔖">🔖</option><option value="👓">👓</option><option value="🎯">🎯</option>
+                  <option value="🎨">🎨</option><option value="🏃">🏃</option><option value="🎵">🎵</option>
+                  <option value="💬">💬</option><option value="📌">📌</option><option value="⭐">⭐</option>
+                </select></div>
+            </div>
+            <label class="mt-12" style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.85rem;font-weight:400">
+              <input type="checkbox" id="ctag-balance"> 자동 배치 균형 기준에 포함 (체크 안하면 참고용 정보로만 기록)</label>
+            <div class="flex-row mt-12">
+              <button class="btn btn-primary btn-sm" onclick="addCustomTag()">추가</button>
+              <button class="btn btn-secondary btn-sm" onclick="hideCustomTagForm()">취소</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card mt-16 sensitive-card" style="margin-top:16px;max-width:600px">
+        <div class="flex-row-between" style="cursor:pointer" onclick="toggleAccordion('balance-body')">
+          <div class="card-title" style="margin:0">⚖️ 자동 배치 균형 기준</div>
+          <span id="balance-chevron" style="font-size:.8rem;color:var(--text-muted)">▸</span>
+        </div>
+        <div id="balance-body" style="display:none;margin-top:12px">
         <div style="font-size:.87rem;color:var(--text-sub);line-height:1.9">
-          자동 배치 시 아래 기준으로 균등 배분합니다:
-          <ul style="margin:6px 0 0 18px">
+          자동 배치 시 아래 기준으로 균등 배분합니다 (쌍둥이·특별부탁은 아래 "배정 필수 조건"에서 별도 관리):
+          <ul style="margin:6px 0 0 18px" id="balance-criteria-list">
             <li>남/여 비율 균등</li>
             <li>학습우수·부진·생활지도 분산 (희소 특성 우선)</li>
-            <li>학습도움반 1명 = 실질 2명으로 계산</li>
+            <li id="balance-doum-desc">학습도움반 1명 = 실질 2명으로 계산</li>
             <li>다문화·기초수급 고려</li>
-            <li>쌍둥이 분리, 배정 규칙 반영</li>
           </ul>
         </div>
-        <div class="mt-12 flex-row">
-          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.87rem;font-weight:400">
-            <input type="checkbox" id="opt-split-twins" checked> 쌍둥이 다른 반 배정</label>
+        <div class="mt-12">
+          <label>학습도움반 가중치 (1명 = 몇 명으로 계산할지)</label>
+          <input type="number" id="opt-doum-weight" min="1" max="5" value="2" style="width:100px" oninput="onDoumWeightChange()">
+        </div>
         </div>
       </div>
-    </div>
-
-    <!-- ③ 배정 규칙 -->
-    <div class="panel" id="panel-rules">
-      <div style="display:grid;grid-template-columns:380px 1fr;gap:20px;align-items:start">
-        <div class="card">
-          <div class="card-title">🔗 규칙 등록</div>
-          <div style="margin-bottom:14px">
-            <label>규칙 유형</label>
-            <div class="flex-row mt-4">
-              <label class="rule-type-btn active sep" id="rtype-분리" onclick="selectRuleType('분리')">🚫 반드시 분리</label>
-              <label class="rule-type-btn" id="rtype-동반" onclick="selectRuleType('동반')">🤝 반드시 동반</label>
-            </div>
-            <div id="rule-type-desc" style="margin-top:6px;font-size:.8rem;color:var(--text-sub)">두 학생을 서로 다른 반에 배정합니다.</div>
-          </div>
-          <div><label>학생 A</label>
-            <div style="position:relative">
-              <input type="text" id="rule-search-a" placeholder="이름 검색..." oninput="searchRuleStudent('a')" autocomplete="off">
-              <div id="rule-dropdown-a" class="rule-dropdown" style="display:none"></div>
-            </div>
-            <div id="rule-selected-a" class="rule-selected-student" style="display:none"></div>
-          </div>
-          <div class="mt-12"><label>학생 B</label>
-            <div style="position:relative">
-              <input type="text" id="rule-search-b" placeholder="이름 검색..." oninput="searchRuleStudent('b')" autocomplete="off">
-              <div id="rule-dropdown-b" class="rule-dropdown" style="display:none"></div>
-            </div>
-            <div id="rule-selected-b" class="rule-selected-student" style="display:none"></div>
-          </div>
-          <div class="mt-12"><label>사유 메모 <span style="font-weight:400;color:var(--text-muted)">(선택)</span></label>
-            <input type="text" id="rule-note" placeholder="예: 작년 갈등, 형제자매"></div>
-          <div class="mt-16"><button class="btn btn-primary" style="width:100%" onclick="addRule()">+ 규칙 등록</button></div>
-        </div>
-        <div class="card">
-          <div class="flex-row-between" style="margin-bottom:14px">
-            <div class="card-title" style="margin:0">📋 등록된 규칙</div>
-            <div class="flex-row">
-              <span id="rule-count-text" style="font-size:.85rem;color:var(--text-sub)">0개</span>
-              <button class="btn btn-danger btn-sm" onclick="clearRules()">전체삭제</button>
-            </div>
-          </div>
-          <div id="rules-list">
-            <div class="empty-state" style="padding:36px 20px"><div class="icon">🔗</div><p>등록된 규칙이 없습니다.<br>왼쪽에서 분리·동반 규칙을 추가하세요.</p></div>
+      <div class="card mt-16" style="margin-top:16px">
+        <div class="flex-row-between" style="cursor:pointer" onclick="toggleAccordion('rules-body')">
+          <div class="card-title" style="margin:0">🔗 배정 필수 조건 (분리/동반)</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span id="rules-summary" style="font-size:.82rem;color:var(--text-sub);font-weight:400">0개 등록됨</span>
+            <span id="rules-chevron" style="font-size:.8rem;color:var(--text-muted)">▸</span>
           </div>
         </div>
-      </div>
-      <div class="card" style="margin-top:16px">
-        <div class="card-title">⚠️ 현재 배정 규칙 위반 현황</div>
-        <div id="rule-violations-body"><div style="color:var(--text-muted);font-size:.87rem">배정 작업 후 위반 현황이 여기에 표시됩니다.</div></div>
+        <div id="rules-body" style="display:none;margin-top:12px">
+          <div style="font-size:.82rem;color:var(--text-sub);margin-bottom:12px;line-height:1.6">
+            쌍둥이·특별부탁 학생 태그를 켜면 개별 수정 화면에서 자동 등록되고, 그 외 임의의 두 학생을 분리/동반시키고 싶을 때는 여기서 직접 추가하세요.
+          </div>
+          <div style="display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start">
+            <div class="card" style="box-shadow:none;border:1px solid var(--border)">
+              <div class="card-title" style="font-size:.95rem">🔗 조건 등록</div>
+              <div style="margin-bottom:14px">
+                <label>조건 유형</label>
+                <div class="flex-row mt-4">
+                  <label class="rule-type-btn active sep" id="rtype-분리" onclick="selectRuleType('분리')">🚫 반드시 분리</label>
+                  <label class="rule-type-btn" id="rtype-동반" onclick="selectRuleType('동반')">🤝 반드시 동반</label>
+                </div>
+                <div id="rule-type-desc" style="margin-top:6px;font-size:.8rem;color:var(--text-sub)">두 학생을 서로 다른 반에 배정합니다.</div>
+              </div>
+              <div><label>학생 A</label>
+                <div style="position:relative">
+                  <input type="text" id="rule-search-a" placeholder="이름 검색..." oninput="searchRuleStudent('a')" autocomplete="off">
+                  <div id="rule-dropdown-a" class="rule-dropdown" style="display:none"></div>
+                </div>
+                <div id="rule-selected-a" class="rule-selected-student" style="display:none"></div>
+              </div>
+              <div class="mt-12"><label>학생 B</label>
+                <div style="position:relative">
+                  <input type="text" id="rule-search-b" placeholder="이름 검색..." oninput="searchRuleStudent('b')" autocomplete="off">
+                  <div id="rule-dropdown-b" class="rule-dropdown" style="display:none"></div>
+                </div>
+                <div id="rule-selected-b" class="rule-selected-student" style="display:none"></div>
+              </div>
+              <div class="mt-12"><label>사유 메모 <span style="font-weight:400;color:var(--text-muted)">(선택)</span></label>
+                <input type="text" id="rule-note" placeholder="예: 작년 갈등, 형제자매"></div>
+              <div class="mt-16"><button class="btn btn-primary" style="width:100%" onclick="addRule()">+ 조건 등록</button></div>
+            </div>
+            <div class="card" style="box-shadow:none;border:1px solid var(--border)">
+              <div class="flex-row-between" style="margin-bottom:14px">
+                <div class="card-title" style="margin:0;font-size:.95rem">📋 등록된 조건</div>
+                <div class="flex-row">
+                  <span id="rule-count-text" style="font-size:.85rem;color:var(--text-sub)">0개</span>
+                  <button class="btn btn-danger btn-sm" onclick="clearRules()">전체삭제</button>
+                </div>
+              </div>
+              <div id="rules-list">
+                <div class="empty-state" style="padding:36px 20px"><div class="icon">🔗</div><p>등록된 조건이 없습니다.<br>왼쪽에서 분리·동반 조건을 추가하거나, 학생 태그의 쌍둥이·특별부탁을 이용하세요.</p></div>
+              </div>
+            </div>
+          </div>
+          <div class="card" style="margin-top:16px;box-shadow:none;border:1px solid var(--border)">
+            <div class="card-title" style="font-size:.95rem">⚠️ 현재 위반 현황</div>
+            <div id="rule-violations-body"><div style="color:var(--text-muted);font-size:.87rem">배정 작업 후 위반 현황이 여기에 표시됩니다.</div></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -554,6 +689,7 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
           <button class="btn btn-secondary" onclick="resetAssign()">↩ 초기화</button>
           <button class="btn btn-secondary" onclick="shuffleAssign()">🎲 재배치</button>
           <button class="btn btn-secondary" id="btn-undo" onclick="undoAssign()" disabled title="되돌릴 내용 없음">⬅ 되돌리기</button>
+          <button class="btn btn-secondary" onclick="quickAddStudent()">➕ 학생 빠른추가</button>
         </div>
         <div class="flex-row">
           <button class="btn btn-secondary btn-sm" onclick="printAssign()">🖨 인쇄</button>
@@ -591,19 +727,23 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
     </div>
     <div class="mt-12"><label>이름</label><input type="text" id="edit-name"></div>
     <div class="mt-12"><label>특성</label>
-      <div class="tags" id="edit-tag-selector">
-        <span class="tag tag-우수" onclick="toggleEditTag(this,'우수')">⭐ 학습우수</span>
-        <span class="tag tag-부진" onclick="toggleEditTag(this,'부진')">📉 학습부진</span>
-        <span class="tag tag-지도" onclick="toggleEditTag(this,'지도')">⚠️ 생활지도</span>
-        <span class="tag tag-수급" onclick="toggleEditTag(this,'수급')">🔵 기초수급</span>
-        <span class="tag tag-다문화" onclick="toggleEditTag(this,'다문화')">🌏 다문화</span>
-        <span class="tag tag-도움" onclick="toggleEditTag(this,'도움')">♿ 학습도움반</span>
-        <span class="tag tag-쌍둥이" onclick="toggleEditTag(this,'쌍둥이')">👥 쌍둥이</span>
-        <span class="tag tag-부탁" onclick="toggleEditTag(this,'부탁')">📝 특별부탁</span>
+      <div class="tags" id="edit-tag-selector"></div>
+    </div>
+    <div class="mt-12"><label>사유 메모</label><input type="text" id="edit-note" placeholder="예: 쌍둥이 / 특별 요청 사항"></div>
+    <div class="mt-12" id="req-rule-section-edit" style="display:none;border:1px dashed var(--border);border-radius:var(--r);padding:12px">
+      <label>배정 필수 조건</label>
+      <div class="flex-row mt-4">
+        <label class="rule-type-btn active sep" id="rtype-reqEdit-분리" onclick="selectReqRuleType('reqEdit','분리')">🚫 반드시 분리</label>
+        <label class="rule-type-btn" id="rtype-reqEdit-동반" onclick="selectReqRuleType('reqEdit','동반')">🤝 반드시 동반</label>
+      </div>
+      <div class="mt-12"><label>대상 학생</label>
+        <div style="position:relative">
+          <input type="text" id="rule-search-reqEdit" placeholder="이름 검색..." oninput="searchRuleStudent('reqEdit')" autocomplete="off">
+          <div id="rule-dropdown-reqEdit" class="rule-dropdown" style="display:none"></div>
+        </div>
+        <div id="rule-selected-reqEdit" class="rule-selected-student" style="display:none"></div>
       </div>
     </div>
-    <div class="mt-12"><label>쌍둥이 상대방</label><input type="text" id="edit-twin" placeholder="쌍둥이 상대방 이름"></div>
-    <div class="mt-12"><label>부탁 메모</label><input type="text" id="edit-note" placeholder="특별 요청 사항"></div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeEditModal()">취소</button>
       <button class="btn btn-primary" onclick="saveEdit()">저장</button>
@@ -614,20 +754,73 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
 <script>
 // ── 상태 ──
 let students=[], classes=[], assignments={}, unassigned=[], rules=[];
+let settingsVersionId=null, lastDownloadedVersionId=null, lastUploadedVersionId=null;
+let dupStudentsCount=0;
 let editingId=null, activeTags=new Set(), editTags=new Set();
 let selectedSrcGrades=new Set(['5']);
 let dragStudentId=null;
-let ruleSelectedA=null, ruleSelectedB=null, currentRuleType='분리';
+let ruleSelected={}, currentRuleType='분리';
+let doumWeight=2;
+function onDoumWeightChange(){
+  const el=document.getElementById('opt-doum-weight');
+  let v=+el.value;
+  if(isNaN(v)||v<1)v=1;
+  if(v>5)v=5;
+  el.value=v;
+  doumWeight=v;
+  const desc=document.getElementById('balance-doum-desc');
+  if(desc)desc.textContent=`학습도움반 1명 = 실질 ${v}명으로 계산`;
+  updateBadges();
+}
+let reqRuleType='분리', reqEditRuleType='분리'; // 특별부탁 분리/동반 선택 (학생 등록/수정 폼)
 let pendingExcelStudents=[];
 let assignHistory=[]; // ⑦ Undo용 배정 스냅샷 스택 (최대 5개)
 
 const TAG_COLORS={'우수':{bg:'#fef9c3',color:'#854d0e'},'부진':{bg:'#fee2e2',color:'#991b1b'},'지도':{bg:'#ede9fe',color:'#5b21b6'},'수급':{bg:'#ffedd5',color:'#9a3412'},'다문화':{bg:'#e0f2fe',color:'#075985'},'도움':{bg:'#dcfce7',color:'#14532d'},'쌍둥이':{bg:'#fdf4ff',color:'#6b21a8'},'부탁':{bg:'#fff1f2',color:'#881337'}};
-const CLASS_NAMES_DEFAULT=['가반','나반','다반','라반','마반','바반'];
-const CLASS_COLORS=['#dbeafe','#d1fae5','#fef3c7','#fce7f3','#ede9fe','#ccfbf1'];
+const CLASS_NAMES_DEFAULT=['가반','나반','다반','라반','마반','바반','사반','아반','자반','차반','카반','타반','파반','하반','거반'];
+const CLASS_COLORS=['#dbeafe','#d1fae5','#fef3c7','#fce7f3','#ede9fe','#ccfbf1','#fee2e2','#e0f2fe','#f5f3ff','#ffedd5','#dcfce7','#fae8ff','#fef9c3','#e0e7ff','#f1f5f9'];
+// ── 특성 사용 설정 ──
+const TAG_DEFS=[
+  {key:'우수',label:'학습우수',icon:'⭐',excelHeader:'학습우수'},
+  {key:'부진',label:'학습부진',icon:'📉',excelHeader:'학습부진'},
+  {key:'지도',label:'생활지도',icon:'⚠️',excelHeader:'생활지도'},
+  {key:'수급',label:'기초수급',icon:'🔵',excelHeader:'기초수급'},
+  {key:'다문화',label:'다문화',icon:'🌏',excelHeader:'다문화'},
+  {key:'도움',label:'학습도움반',icon:'♿',excelHeader:'학습도움반'},
+  {key:'쌍둥이',label:'쌍둥이',icon:'👥',excelHeader:'쌍둥이'},
+  {key:'부탁',label:'특별부탁',icon:'📝',excelHeader:'특별부탁'}
+];
+const BALANCE_TAGS=['우수','부진','지도','수급','다문화','도움']; // 자동 배치 균형/통계 대상 특성
+const TAG_COL_CANDS={우수:['학습우수','우수'],부진:['학습부진','부진'],지도:['생활지도','지도'],수급:['기초수급','수급'],다문화:['다문화'],도움:['학습도움반','도움반','도움'],쌍둥이:['쌍둥이'],부탁:['특별부탁','부탁']};
+let enabledTags=new Set(TAG_DEFS.map(t=>t.key));
+let customTagDefs=[]; // 사용자 추가 특성: {key,label,icon,excelHeader,custom:true,balance:bool}
+function allTagDefs(){return TAG_DEFS.concat(customTagDefs);}
+function getBalanceTags(){return BALANCE_TAGS.concat(customTagDefs.filter(t=>t.balance).map(t=>t.key)).filter(t=>enabledTags.has(t));}
 function uid(){return '_'+Math.random().toString(36).slice(2,9)}
+const MAX_CLASSES=15;
+function populateClassNumberSelect(){
+  const el=document.getElementById('inp-class');if(!el)return;
+  el.innerHTML=Array.from({length:MAX_CLASSES},(_,i)=>i+1).map(c=>`<option value="${c}">${c}반</option>`).join('');
+}
+function clampNumClasses(){
+  const el=document.getElementById('setup-num-classes');
+  let v=+el.value;
+  if(isNaN(v)||v<1)v=1;
+  if(v>MAX_CLASSES)v=MAX_CLASSES;
+  el.value=v;
+  renderClassNameInputs();
+}
 
 // ── 탭 전환 ──
 let assignScrollTop=0; // ③ 배정 탭 스크롤 위치 보존
+const STEP_ORDER=['setup','template','upload','assign','students','stats'];
+function updateStepProgress(name){
+  const idx=STEP_ORDER.indexOf(name);
+  document.querySelectorAll('#step-progress .step-dot').forEach((el,i)=>{
+    el.classList.toggle('active',i===idx);
+    el.classList.toggle('done',idx>=0&&i<idx);
+  });
+}
 function switchTab(name){
   if(document.getElementById('panel-assign')?.classList.contains('active')){
     assignScrollTop=document.getElementById('panel-assign').scrollTop;
@@ -636,6 +829,7 @@ function switchTab(name){
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('tab-'+name).classList.add('active');
   document.getElementById('panel-'+name).classList.add('active');
+  updateStepProgress(name);
   // 7. 완료 탭 표시 - 학생이 있으면 학생탭 done, 반설정 완료면 반설정 done
   const tStudents=document.getElementById('tab-students');
   const tSetup=document.getElementById('tab-setup');
@@ -647,14 +841,24 @@ function switchTab(name){
     raf(()=>{const p=document.getElementById('panel-assign');if(p)p.scrollTop=assignScrollTop;});
   }
   if(name==='stats')renderStats();
-  if(name==='rules'){renderRulesList();renderViolations();}
+  if(name==='setup'){renderRulesList();renderViolations();}
+  if(name==='template'){if(!settingsVersionId)refreshSettingsVersion();updateTemplateVersionBanner();}
 }
 
+// ── 개별 수정 탭 바로가기 ──
+function quickAddStudent(){
+  switchTab('students');
+  switchInputTab('manual');
+  setTimeout(()=>{
+    const el=document.getElementById('inp-name');
+    if(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.focus();}
+  },50);
+}
 function switchInputTab(name){
   document.querySelectorAll('.input-sub-tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.input-sub-panel').forEach(p=>p.classList.remove('active'));
   const tabs=document.querySelectorAll('.input-sub-tab');
-  const map={'manual':0,'excel':1,'bulk':2};
+  const map={'manual':0,'bulk':1};
   tabs[map[name]].classList.add('active');
   document.getElementById('isub-'+name).classList.add('active');
 }
@@ -662,17 +866,167 @@ function switchInputTab(name){
 // ── 태그 토글 ──
 function toggleTag(el,tag){
   if(activeTags.has(tag)){activeTags.delete(tag);el.classList.remove('on');}
-  else{activeTags.add(tag);el.classList.add('on');}
-  document.getElementById('twin-section').style.display=activeTags.has('쌍둥이')?'block':'none';
-  document.getElementById('note-section').style.display=activeTags.has('부탁')?'block':'none';
+  else{
+    activeTags.add(tag);el.classList.add('on');
+    if(tag==='쌍둥이'){
+      const noteEl=document.getElementById('inp-note');
+      if(noteEl&&!noteEl.value.trim())noteEl.value='쌍둥이';
+    }
+  }
+  const needsRule=activeTags.has('쌍둥이')||activeTags.has('부탁');
+  document.getElementById('note-section').style.display=needsRule?'block':'none';
+  document.getElementById('req-rule-section').style.display=needsRule?'block':'none';
 }
 function toggleEditTag(el,tag){
   if(editTags.has(tag)){editTags.delete(tag);el.classList.remove('on');}
-  else{editTags.add(tag);el.classList.add('on');}
+  else{
+    editTags.add(tag);el.classList.add('on');
+    if(tag==='쌍둥이'){
+      const noteEl=document.getElementById('edit-note');
+      if(noteEl&&!noteEl.value.trim())noteEl.value='쌍둥이';
+    }
+  }
+  document.getElementById('req-rule-section-edit').style.display=(editTags.has('쌍둥이')||editTags.has('부탁'))?'block':'none';
 }
 function toggleSrcGrade(el,grade){
   if(selectedSrcGrades.has(grade)){if(selectedSrcGrades.size===1)return;selectedSrcGrades.delete(grade);el.classList.remove('active');}
   else{selectedSrcGrades.add(grade);el.classList.add('active');}
+  autoSetTargetGrade();
+}
+function autoSetTargetGrade(){
+  const sel=document.getElementById('setup-grade');if(!sel)return;
+  const maxGrade=Math.max(...[...selectedSrcGrades].map(Number));
+  const target=Math.min(6,maxGrade+1);
+  sel.value=String(target);
+  const hint=document.getElementById('target-grade-hint');
+  if(hint)hint.textContent=`기준 학년(${[...selectedSrcGrades].sort().join(',')}학년) 기준 자동 설정됨`;
+}
+
+// ── 특성 사용 설정 렌더링 ──
+function renderTagSelectors(){
+  const defs=allTagDefs().filter(t=>enabledTags.has(t.key));
+  const manual=document.getElementById('tag-selector');
+  const edit=document.getElementById('edit-tag-selector');
+  const html=defs.map(t=>`<span class="tag tag-${t.key}" data-tag="${t.key}">${t.icon} ${t.label}</span>`).join('');
+  if(manual){
+    manual.innerHTML=html;
+    manual.querySelectorAll('.tag').forEach(el=>{
+      el.onclick=()=>toggleTag(el,el.dataset.tag);
+      el.classList.toggle('on',activeTags.has(el.dataset.tag));
+    });
+  }
+  if(edit){
+    edit.innerHTML=html;
+    edit.querySelectorAll('.tag').forEach(el=>{
+      el.onclick=()=>toggleEditTag(el,el.dataset.tag);
+      el.classList.toggle('on',editTags.has(el.dataset.tag));
+    });
+  }
+  // 사용 중지된 특성은 선택 목록에서도 제거
+  document.getElementById('note-section').style.display=(activeTags.has('쌍둥이')||activeTags.has('부탁'))?'block':'none';
+  document.getElementById('req-rule-section').style.display=(activeTags.has('쌍둥이')||activeTags.has('부탁'))?'block':'none';
+  document.getElementById('req-rule-section-edit').style.display=(editTags.has('쌍둥이')||editTags.has('부탁'))?'block':'none';
+}
+function renderTagEnableSettings(){
+  const c=document.getElementById('tag-enable-list');if(!c)return;
+  c.innerHTML=allTagDefs().map(t=>`
+    <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.87rem;font-weight:400;padding:5px 12px;border:1px solid var(--border);border-radius:20px;background:${enabledTags.has(t.key)?'var(--primary-light)':'var(--surface2)'}">
+      <input type="checkbox" ${enabledTags.has(t.key)?'checked':''} onchange="toggleEnabledTag('${t.key}',this.checked)"> ${t.icon} ${t.label}
+      ${t.custom?`<span onclick="event.preventDefault();removeCustomTag('${t.key}')" title="특성 삭제" style="color:var(--text-muted);font-weight:700;padding:0 2px">×</span>`:''}
+    </label>`).join('');
+  updateTagSettingsSummary();
+}
+function updateTagSettingsSummary(){
+  const el=document.getElementById('tag-settings-summary');if(!el)return;
+  const icons=allTagDefs().filter(t=>enabledTags.has(t.key)).map(t=>t.icon).join(' ');
+  el.textContent=`${enabledTags.size}/${allTagDefs().length}개 ${icons}`;
+}
+function updateFormatGuideText(){
+  const el=document.getElementById('format-guide-tags');if(!el)return;
+  const active=allTagDefs().filter(t=>enabledTags.has(t.key)).map(t=>t.excelHeader);
+  el.innerHTML=active.length?active.join(', '):'<span style="color:var(--text-muted)">사용 설정된 특성이 없습니다</span>';
+}
+
+// ── 설정 버전 스냅샷 (설정↔엑셀 서식 동기화) ──
+function computeSettingsVersion(){
+  const n=classes.length||+document.getElementById('setup-num-classes').value||0;
+  const tagKey=allTagDefs().filter(t=>enabledTags.has(t.key)).map(t=>t.key).join(',');
+  const raw=`n${n}|${tagKey}`;
+  let h=0;for(let i=0;i<raw.length;i++){h=((h<<5)-h+raw.charCodeAt(i))|0;}
+  return 'v'+Math.abs(h);
+}
+function refreshSettingsVersion(){
+  settingsVersionId=computeSettingsVersion();
+  updateTemplateVersionBanner();
+}
+function updateTemplateVersionBanner(){
+  const b=document.getElementById('template-version-banner');if(!b)return;
+  b.style.display='block';
+  if(lastDownloadedVersionId!==settingsVersionId){
+    b.style.background='var(--amber-light)';b.style.color='var(--amber)';b.style.borderColor='#fde68a';
+    b.textContent=lastDownloadedVersionId?'⚠️ 설정이 마지막 서식 다운로드 이후 변경되었습니다. 서식을 다시 받아주세요.':'ℹ️ 아직 서식을 다운로드하지 않았습니다.';
+  }else{
+    b.style.background='var(--green-light)';b.style.color='var(--green)';b.style.borderColor='#bbf7d0';
+    b.textContent='✅ 현재 설정과 일치하는 서식입니다.';
+  }
+}
+function toggleEnabledTag(key,checked){
+  const def=allTagDefs().find(t=>t.key===key);
+  if(checked){enabledTags.add(key);}
+  else{enabledTags.delete(key);activeTags.delete(key);editTags.delete(key);}
+  renderTagEnableSettings();renderTagSelectors();updateFormatGuideText();refreshSettingsVersion();
+  showToast(checked?`✅ '${def.label}' 특성 사용`:`⛔ '${def.label}' 특성 미사용으로 설정`);
+}
+
+// ── 아코디언(민감 설정 기본 접힘) ──
+function toggleAccordion(bodyId){
+  const body=document.getElementById(bodyId);if(!body)return;
+  const chevronMap={'tag-settings-body':'tag-settings-chevron','balance-body':'balance-chevron','rules-body':'rules-chevron'};
+  const chevron=document.getElementById(chevronMap[bodyId]);
+  const open=body.style.display==='none';
+  body.style.display=open?'block':'none';
+  if(chevron)chevron.textContent=open?'▾':'▸';
+}
+// ── 민감정보 가리기(블러) ──
+function toggleSensitiveBlur(){
+  const on=document.body.classList.toggle('blur-sensitive');
+  document.getElementById('btn-blur-toggle').textContent=on?'👁 민감정보 보기':'👁 민감정보 가리기';
+}
+// ── 사용자 정의 특성 추가 ──
+function showCustomTagForm(){document.getElementById('custom-tag-form').style.display='block';}
+function hideCustomTagForm(){
+  document.getElementById('custom-tag-form').style.display='none';
+  document.getElementById('ctag-name').value='';document.getElementById('ctag-balance').checked=false;
+}
+function addCustomTag(){
+  const name=document.getElementById('ctag-name').value.trim();
+  if(!name){showToast('⚠️ 특성 이름을 입력해주세요','warn');return;}
+  if(allTagDefs().some(t=>t.label===name)){showToast('⚠️ 이미 있는 특성 이름입니다','warn');return;}
+  const icon=document.getElementById('ctag-icon').value;
+  const balance=document.getElementById('ctag-balance').checked;
+  const key='c_'+uid();
+  customTagDefs.push({key,label:name,icon,excelHeader:name,custom:true,balance});
+  enabledTags.add(key);
+  hideCustomTagForm();
+  renderTagEnableSettings();renderTagSelectors();updateFormatGuideText();refreshSettingsVersion();
+  showToast(`✅ '${name}' 특성 추가 완료`);
+}
+function removeCustomTag(key){
+  const def=customTagDefs.find(t=>t.key===key);if(!def)return;
+  if(!confirm(`'${def.label}' 특성을 삭제하시겠습니까?\n이미 이 특성이 지정된 학생 데이터에서도 제거됩니다.`))return;
+  const snapCustomTags=JSON.parse(JSON.stringify(customTagDefs));
+  const snapEnabled=[...enabledTags];
+  const snapStudentTags=students.map(s=>({id:s.id,tags:[...s.tags]}));
+  customTagDefs=customTagDefs.filter(t=>t.key!==key);
+  enabledTags.delete(key);
+  students.forEach(s=>{s.tags=s.tags.filter(t=>t!==key);});
+  renderTagEnableSettings();renderTagSelectors();updateFormatGuideText();refreshSettingsVersion();renderStudentList();
+  showUndoToast(`🗑 '${def.label}' 특성 삭제됨`,()=>{
+    customTagDefs=snapCustomTags;enabledTags=new Set(snapEnabled);
+    snapStudentTags.forEach(st=>{const s=students.find(x=>x.id===st.id);if(s)s.tags=st.tags;});
+    renderTagEnableSettings();renderTagSelectors();updateFormatGuideText();refreshSettingsVersion();renderStudentList();
+    showToast('↩ 복구되었습니다');
+  });
 }
 
 // ── 학생 추가 ──
@@ -682,19 +1036,23 @@ function addStudent(){
   const num=document.getElementById('inp-num').value.trim();
   const name=document.getElementById('inp-name').value.trim();
   const gender=document.getElementById('inp-gender').value;
-  const twin=document.getElementById('inp-twin').value.trim();
   const note=document.getElementById('inp-note').value.trim();
   if(!name){showToast('⚠️ 이름을 입력해주세요','warn');return;}
-  const s={id:uid(),grade:+grade,cls:+cls,num:num?+num:0,name,gender,tags:[...activeTags],twin,note};
+  const s={id:uid(),grade:+grade,cls:+cls,num:num?+num:0,name,gender,tags:[...activeTags],note};
   students.push(s);unassigned.push(s.id);
+  if((activeTags.has('부탁')||activeTags.has('쌍둥이'))&&ruleSelected.req){
+    rules.push({id:uid(),type:reqRuleType,idA:s.id,idB:ruleSelected.req.id,note,source:'request'});
+    showToast(`🔗 ${name} ↔ ${ruleSelected.req.name} ${reqRuleType} 조건도 함께 등록됨`);
+    renderRulesList();
+  }
+  clearRuleStudent('req');
   document.getElementById('inp-name').value='';
   document.getElementById('inp-num').value='';
-  document.getElementById('inp-twin').value='';
   document.getElementById('inp-note').value='';
   activeTags.clear();
   document.querySelectorAll('#tag-selector .tag').forEach(t=>t.classList.remove('on'));
-  document.getElementById('twin-section').style.display='none';
   document.getElementById('note-section').style.display='none';
+  document.getElementById('req-rule-section').style.display='none';
   renderStudentList();updateBadges();
   showToast('✅ '+name+' 등록 완료');
   document.getElementById('inp-name').focus();
@@ -705,6 +1063,17 @@ function handleExcelDrop(e){
   e.preventDefault();document.getElementById('excel-dropzone').classList.remove('drag-hover');
   const file=e.dataTransfer.files[0];if(file)handleExcelFile(file);
 }
+function checkUploadVersion(uploadedVersion){
+  const b=document.getElementById('upload-version-banner');if(!b)return;
+  if(!settingsVersionId)refreshSettingsVersion();
+  if(!uploadedVersion){b.style.display='none';return;}
+  if(uploadedVersion!==settingsVersionId){
+    b.style.display='block';
+    b.textContent='⚠️ 이 파일은 현재 설정과 다른 서식 버전으로 만들어졌습니다 (반 수 또는 특성 사용 설정이 다를 수 있음). 그래도 인식되는 열은 정상 반영되니 확인 후 진행하세요.';
+  }else{
+    b.style.display='none';
+  }
+}
 function handleExcelFile(file){
   if(!file)return;
   if(!/\.(xlsx|xls)$/i.test(file.name)){showToast('⚠️ .xlsx/.xls 파일만 가능합니다','warn');return;}
@@ -713,9 +1082,15 @@ function handleExcelFile(file){
     try{
       const wb=XLSX.read(e.target.result,{type:'array'});
       const ws=wb.Sheets[wb.SheetNames[0]];
-      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      const firstCell=ws['A1'];
+      const headerStartRow=(firstCell&&String(firstCell.v||'').trim().startsWith('※'))?1:0;
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:'',range:headerStartRow});
       if(!rows.length){showToast('⚠️ 데이터가 없습니다','warn');return;}
-      const COL={grade:['학년'],cls:['반'],num:['번호','출석번호','출번'],name:['이름','성명'],gender:['성별'],우수:['학습우수','우수'],부진:['학습부진','부진'],지도:['생활지도','지도'],수급:['기초수급','수급'],다문화:['다문화'],도움:['학습도움반','도움반','도움'],쌍둥이:['쌍둥이'],부탁:['특별부탁','부탁'],note:['메모','비고','부탁내용']};
+      const metaWs=wb.Sheets['_meta'];
+      const uploadedVersion=metaWs&&metaWs['A1']?String(metaWs['A1'].v):null;
+      checkUploadVersion(uploadedVersion);
+      const COL={grade:['학년'],cls:['반'],num:['번호','출석번호','출번'],name:['이름','성명'],gender:['성별'],note:['메모','비고','부탁내용']};
+      allTagDefs().forEach(t=>{if(enabledTags.has(t.key))COL[t.key]=TAG_COL_CANDS[t.key]||[t.excelHeader];});
       const headers=Object.keys(rows[0]);const keyMap={};
       for(const[k,cands]of Object.entries(COL)){for(const c of cands){const f=headers.find(h=>h.trim()===c);if(f){keyMap[k]=f;break;}}}
       if(!keyMap.name){
@@ -723,7 +1098,7 @@ function handleExcelFile(file){
         showToast(`⚠️ "이름" 열을 찾을 수 없습니다. 인식된 열: ${Object.keys(rows[0]).join(', ')}`, 'warn');
         return;
       }
-      const TAG_KEYS=['우수','부진','지도','수급','다문화','도움','쌍둥이','부탁'];
+      const TAG_KEYS=allTagDefs().filter(t=>enabledTags.has(t.key)).map(t=>t.key);
       const isTrue=(v)=>v!==''&&v!==0&&v!=='0'&&v!==false&&v!=='X'&&v!=='x';
       pendingExcelStudents=[];let errors=0;
       rows.forEach(row=>{
@@ -735,7 +1110,7 @@ function handleExcelFile(file){
         const gender=gRaw==='여'?'여':'남';
         const tags=TAG_KEYS.filter(t=>keyMap[t]&&isTrue(row[keyMap[t]]));
         const note=keyMap.note?String(row[keyMap.note]||'').trim():'';
-        pendingExcelStudents.push({id:uid(),grade,cls,num,name,gender,tags,twin:'',note});
+        pendingExcelStudents.push({id:uid(),grade,cls,num,name,gender,tags,note});
       });
       if(!pendingExcelStudents.length){showToast('⚠️ 유효한 데이터가 없습니다','warn');return;}
       showExcelPreview(file.name,errors);
@@ -743,23 +1118,59 @@ function handleExcelFile(file){
   };
   reader.readAsArrayBuffer(file);
 }
+function studentKey(s){return `${s.grade}-${s.cls}-${s.num}-${s.name}`;}
 function showExcelPreview(filename,errors){
   const TAG_ICONS={'우수':'⭐','부진':'📉','지도':'⚠️','수급':'🔵','다문화':'🌏','도움':'♿','쌍둥이':'👥','부탁':'📝'};
+  const existingKeys=new Set(students.map(studentKey));
+  dupStudentsCount=pendingExcelStudents.filter(s=>existingKeys.has(studentKey(s))).length;
   document.getElementById('preview-summary').innerHTML=`<span style="color:var(--primary)">📄 ${filename}</span> → <strong>${pendingExcelStudents.length}명</strong>${errors?` <span style="color:var(--red)">(오류 ${errors}행)</span>`:''}`;
+  const dupBox=document.getElementById('duplicate-warning');
+  if(dupStudentsCount>0){
+    dupBox.style.display='block';
+    dupBox.innerHTML=`⚠️ 이미 등록된 학생과 같은 학년-반-번호-이름이 <b>${dupStudentsCount}건</b> 있습니다. 처리 방법을 선택하세요.<br>
+      <label style="margin-right:12px"><input type="radio" name="dup-strategy" value="skip" checked> 건너뛰기(기존 유지)</label>
+      <label style="margin-right:12px"><input type="radio" name="dup-strategy" value="overwrite"> 덮어쓰기(새 정보로 교체)</label>
+      <label><input type="radio" name="dup-strategy" value="addall"> 모두 추가(중복 허용)</label>`;
+  }else{
+    dupBox.style.display='none';dupBox.innerHTML='';
+  }
   const shown=pendingExcelStudents.slice(0,30);
   document.getElementById('preview-table').innerHTML=`<thead><tr><th>학년-반-번호</th><th>이름</th><th>성별</th><th>특성</th><th>메모</th></tr></thead><tbody>${shown.map(s=>`<tr><td style="color:var(--text-sub)">${s.grade}-${s.cls}-${s.num||'?'}</td><td style="font-weight:600;color:${s.gender==='남'?'#1d4ed8':'#be185d'}">${s.name}</td><td>${s.gender}</td><td>${s.tags.map(t=>`<span>${TAG_ICONS[t]||t}</span>`).join(' ')}</td><td style="font-size:.78rem">${s.note}</td></tr>`).join('')}${pendingExcelStudents.length>30?`<tr><td colspan="5" style="text-align:center;color:var(--text-muted)">... 외 ${pendingExcelStudents.length-30}명</td></tr>`:''}</tbody>`;
   document.getElementById('excel-preview').style.display='block';
+  document.getElementById('upload-empty').style.display='none';
   document.getElementById('excel-dropzone').style.display='none';
   document.querySelector('#excel-dropzone + button').style.display='none';
+  document.getElementById('post-import-actions').style.display='none';
 }
 function confirmExcelImport(){
-  pendingExcelStudents.forEach(s=>{students.push(s);unassigned.push(s.id);});
-  const count=pendingExcelStudents.length;pendingExcelStudents=[];
-  cancelExcelImport();renderStudentList();updateBadges();showToast(`✅ ${count}명 등록 완료`);
+  const strategyEl=document.querySelector('input[name="dup-strategy"]:checked');
+  const strategy=strategyEl?strategyEl.value:'addall';
+  let toAdd=pendingExcelStudents;
+  const existingKeys=new Map(students.map(s=>[studentKey(s),s]));
+  if(strategy==='skip'){
+    toAdd=pendingExcelStudents.filter(s=>!existingKeys.has(studentKey(s)));
+  }else if(strategy==='overwrite'){
+    pendingExcelStudents.forEach(s=>{
+      const ex=existingKeys.get(studentKey(s));
+      if(ex){deleteStudent(ex.id);}
+    });
+  }
+  toAdd.forEach(s=>{students.push(s);unassigned.push(s.id);});
+  const count=toAdd.length,skipped=pendingExcelStudents.length-toAdd.length;
+  pendingExcelStudents=[];
+  renderStudentList();updateBadges();
+  document.getElementById('preview-summary').innerHTML=`<span style="color:var(--green)">✅ ${count}명 등록 완료</span>${skipped?` <span style="color:var(--text-sub)">(중복 ${skipped}명 건너뜀)</span>`:''}`;
+  document.getElementById('duplicate-warning').style.display='none';
+  document.getElementById('post-import-actions').style.display='block';
+  showToast(`✅ ${count}명 등록 완료`);
+}
+function runAutoAssignFromUpload(){
+  autoAssign();
 }
 function cancelExcelImport(){
   pendingExcelStudents=[];
   document.getElementById('excel-preview').style.display='none';
+  document.getElementById('upload-empty').style.display='block';
   document.getElementById('excel-dropzone').style.display='block';
   document.querySelector('#excel-dropzone + button').style.display='block';
   document.getElementById('excel-file-input').value='';
@@ -771,14 +1182,34 @@ function toggleFormatGuide(){
 }
 async function downloadSampleExcel(){
   const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet('학생명단');
-  const headers=['학년','반','번호','이름','성별','학습우수','학습부진','생활지도','기초수급','다문화','학습도움반','쌍둥이','특별부탁','메모'];
+  const activeDefs=allTagDefs().filter(t=>enabledTags.has(t.key));
+  const headers=['학년','반','번호','이름','성별',...activeDefs.map(t=>t.excelHeader),'메모'];
+  const noteRow=ws.addRow(['※ 학년/반/번호는 전년도(현재) 기준입니다. 새 학년도 반 배정 결과가 아닙니다.']);
+  ws.mergeCells(1,1,1,headers.length);
+  noteRow.getCell(1).font={italic:true,bold:true,color:{argb:'FF9A3412'}};
+  noteRow.getCell(1).alignment={horizontal:'left',vertical:'middle'};
+  noteRow.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF7ED'}};
+  noteRow.height=20;
   const hr=ws.addRow(headers);
   hr.eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A5F'}};cell.alignment={horizontal:'center'};});
-  [[5,1,1,'김도연','여','O','','','','','','','',''],[5,1,2,'박철수','남','','O','','','','','','','',''],[5,2,1,'최민준','남','','','','O','','','','','기초수급 가정'],[5,2,2,'왕레이','남','','','','','O','','','','']].forEach((r,i)=>{const row=ws.addRow(r);if(i%2===1)row.eachCell(c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF8F9FB'}};});});
-  ws.columns=[{width:6},{width:5},{width:6},{width:12},{width:6},{width:8},{width:8},{width:8},{width:8},{width:8},{width:10},{width:8},{width:8},{width:24}];
+  const sampleBase=[
+    {grade:5,cls:1,num:1,name:'김도연',gender:'여',tags:['우수'],note:''},
+    {grade:5,cls:1,num:2,name:'박철수',gender:'남',tags:['부진'],note:''},
+    {grade:5,cls:2,num:1,name:'최민준',gender:'남',tags:['수급'],note:'기초수급 가정'},
+    {grade:5,cls:2,num:2,name:'왕레이',gender:'남',tags:['다문화'],note:''}
+  ];
+  sampleBase.forEach((s,i)=>{
+    const row=[s.grade,s.cls,s.num,s.name,s.gender,...activeDefs.map(t=>s.tags.includes(t.key)?'O':''),s.note];
+    const r=ws.addRow(row);
+    if(i%2===1)r.eachCell(c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF8F9FB'}};});
+  });
+  ws.columns=[{width:6},{width:5},{width:6},{width:12},{width:6},...activeDefs.map(t=>({width:t.key==='도움'?10:8})),{width:24}];
+  if(!settingsVersionId)refreshSettingsVersion();
+  const wsMeta=wb.addWorksheet('_meta');wsMeta.state='veryHidden';wsMeta.getCell('A1').value=settingsVersionId;
   const buf=await wb.xlsx.writeBuffer();
   const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
   const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='반편성_학생명단_서식.xlsx';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+  lastDownloadedVersionId=settingsVersionId;updateTemplateVersionBanner();
   showToast('⬇ 서식 파일 다운로드 완료');
 }
 
@@ -792,9 +1223,9 @@ function bulkImport(){
     const idParts=parts[0].split('-');if(idParts.length<2){errors++;return;}
     const grade=+idParts[0]||5,cls=+idParts[1]||1,num=+idParts[2]||0;
     const name=parts[1],gender=parts[2]==='여'?'여':'남';
-    const tagMap={'우수':'우수','부진':'부진','지도':'지도','수급':'수급','다문화':'다문화','도움':'도움','쌍둥이':'쌍둥이','부탁':'부탁'};
+    const tagMap={};allTagDefs().forEach(t=>{if(enabledTags.has(t.key))tagMap[t.key]=t.key;});
     const tags=parts.slice(3).filter(p=>tagMap[p]).map(p=>tagMap[p]);
-    students.push({id:uid(),grade,cls,num,name,gender,tags,twin:'',note:''});
+    students.push({id:uid(),grade,cls,num,name,gender,tags,note:''});
     unassigned.push(students[students.length-1].id);count++;
   });
   document.getElementById('bulk-input').value='';
@@ -829,6 +1260,7 @@ function filterStudents(){renderStudentList();}
 function deleteStudent(id){
   students=students.filter(s=>s.id!==id);unassigned=unassigned.filter(s=>s!==id);
   for(const cid in assignments)assignments[cid]=assignments[cid].filter(s=>s!==id);
+  rules=rules.filter(r=>r.idA!==id&&r.idB!==id);
   renderStudentList();updateBadges();
 }
 
@@ -836,17 +1268,23 @@ function deleteStudent(id){
 function openEdit(id){
   const s=students.find(s=>s.id===id);if(!s)return;
   editingId=id;editTags=new Set(s.tags);
-  document.getElementById('edit-grade').innerHTML=[4,5,6].map(g=>`<option value="${g}" ${g===s.grade?'selected':''}>${g}학년</option>`).join('');
-  document.getElementById('edit-class').innerHTML=[1,2,3,4,5,6].map(c=>`<option value="${c}" ${c===s.cls?'selected':''}>${c}반</option>`).join('');
+  document.getElementById('edit-grade').innerHTML=[5,4,3,2,1].map(g=>`<option value="${g}" ${g===s.grade?'selected':''}>${g}학년</option>`).join('');
+  document.getElementById('edit-class').innerHTML=Array.from({length:15},(_,i)=>i+1).map(c=>`<option value="${c}" ${c===s.cls?'selected':''}>${c}반</option>`).join('');
   document.getElementById('edit-num').value=s.num;
   document.getElementById('edit-name').value=s.name;
   document.getElementById('edit-gender').value=s.gender;
-  document.getElementById('edit-twin').value=s.twin;
   document.getElementById('edit-note').value=s.note;
   document.querySelectorAll('#edit-tag-selector .tag').forEach(el=>{
-    const tagName=['우수','부진','지도','수급','다문화','도움','쌍둥이','부탁'].find(n=>el.onclick.toString().includes(n));
-    if(tagName&&editTags.has(tagName))el.classList.add('on');else el.classList.remove('on');
+    el.classList.toggle('on', editTags.has(el.dataset.tag));
   });
+  clearRuleStudent('reqEdit');selectReqRuleType('reqEdit','분리');
+  const existingReqRule=rules.find(r=>r.source==='request'&&(r.idA===s.id||r.idB===s.id));
+  if(existingReqRule){
+    const targetId=existingReqRule.idA===s.id?existingReqRule.idB:existingReqRule.idA;
+    const target=students.find(st=>st.id===targetId);
+    if(target){selectRuleStudent('reqEdit',target.id);selectReqRuleType('reqEdit',existingReqRule.type);}
+  }
+  document.getElementById('req-rule-section-edit').style.display=(editTags.has('쌍둥이')||editTags.has('부탁'))?'block':'none';
   document.getElementById('edit-modal').style.display='flex';
 }
 function closeEditModal(){document.getElementById('edit-modal').style.display='none';editingId=null;editTags.clear();}
@@ -855,13 +1293,21 @@ function saveEdit(){
   s.grade=+document.getElementById('edit-grade').value;s.cls=+document.getElementById('edit-class').value;
   s.num=+document.getElementById('edit-num').value||0;s.name=document.getElementById('edit-name').value.trim();
   s.gender=document.getElementById('edit-gender').value;s.tags=[...editTags];
-  s.twin=document.getElementById('edit-twin').value.trim();s.note=document.getElementById('edit-note').value.trim();
-  closeEditModal();renderStudentList();renderAssignIfActive();showToast('✅ 수정 완료');
+  s.note=document.getElementById('edit-note').value.trim();
+  // 쌍둥이·특별부탁 조건 동기화 (이 UI로 만들어진 조건만 관리, 여기서 직접 등록한 조건은 건드리지 않음)
+  rules=rules.filter(r=>!(r.source==='request'&&(r.idA===s.id||r.idB===s.id)));
+  if((editTags.has('부탁')||editTags.has('쌍둥이'))&&ruleSelected.reqEdit){
+    rules.push({id:uid(),type:reqEditRuleType,idA:s.id,idB:ruleSelected.reqEdit.id,note:s.note,source:'request'});
+  }
+  closeEditModal();renderStudentList();renderRulesList();renderAssignIfActive();showToast('✅ 수정 완료');
 }
 
 // ── 반 설정 ──
 function applySetup(){
-  const n=+document.getElementById('setup-num-classes').value;
+  let n=+document.getElementById('setup-num-classes').value;
+  if(isNaN(n)||n<1)n=1;
+  if(n>MAX_CLASSES)n=MAX_CLASSES;
+  document.getElementById('setup-num-classes').value=n;
   const hasAssigned=classes.some(c=>(assignments[c.id]||[]).length>0);
   if(hasAssigned){
     if(!confirm('⚠️ 반 설정을 변경하면 현재까지의 배정 결과가 모두 초기화됩니다.\n계속하시겠습니까?'))return;
@@ -869,11 +1315,12 @@ function applySetup(){
   classes=[];assignments={};
   for(let i=0;i<n;i++){
     const id='class_'+i;const nameEl=document.getElementById('cn-'+i);
-    classes.push({id,name:nameEl?nameEl.value:CLASS_NAMES_DEFAULT[i],color:CLASS_COLORS[i]});
+    classes.push({id,name:nameEl?nameEl.value:(CLASS_NAMES_DEFAULT[i]||(i+1)+'반'),color:CLASS_COLORS[i%CLASS_COLORS.length]});
     assignments[id]=[];
   }
   unassigned=students.filter(s=>selectedSrcGrades.has(String(s.grade))).map(s=>s.id);
   renderClassNameInputs();
+  refreshSettingsVersion();
   // 반 설정 탭에 완료 배지 표시
   const setupTab=document.getElementById('tab-setup');
   let doneBadge=setupTab.querySelector('.setup-done');
@@ -886,11 +1333,17 @@ function applySetup(){
   showToast('✅ 반 설정 적용 완료 — ④ 배정 작업으로 이동하세요');
 }
 function renderClassNameInputs(savedNames){
-  const n=+document.getElementById('setup-num-classes').value;
-  const c=document.getElementById('class-name-inputs');c.className='form-row form-row-3';
+  let n=+document.getElementById('setup-num-classes').value;
+  if(isNaN(n)||n<1)n=1;
+  if(n>MAX_CLASSES)n=MAX_CLASSES;
+  const c=document.getElementById('class-name-inputs');
+  c.className='form-row';
+  c.style.display='grid';
+  c.style.gridTemplateColumns=n>6?'repeat(auto-fill,minmax(100px,1fr))':'repeat(3,1fr)';
+  c.style.gap='10px';
   // ⑧ 저장된 반 이름 우선 사용, 없으면 기본값
   c.innerHTML=Array.from({length:n},(_,i)=>{
-    const name=(savedNames&&savedNames[i])||CLASS_NAMES_DEFAULT[i];
+    const name=(savedNames&&savedNames[i])||CLASS_NAMES_DEFAULT[i]||(i+1)+'반';
     return`<div><label>${i+1}번째 반</label><input type="text" id="cn-${i}" value="${name}"></div>`;
   }).join('');
 }
@@ -922,15 +1375,14 @@ function autoAssign(){
   if(!pool.length){showToast('⚠️ 배정할 학생이 없습니다','warn');return;}
   classes.forEach(c=>{assignments[c.id]=[];});unassigned=[];
   saveSnapshot(); // ⑦ 배치 전 스냅샷
-  const splitTwins=document.getElementById('opt-split-twins').checked;
 
-  function weight(s){return s.tags.includes('도움')?2:1;}
+  function weight(s){return s.tags.includes('도움')?doumWeight:1;}
   function classWeight(cid){return(assignments[cid]||[]).reduce((acc,id)=>{const s=students.find(st=>st.id===id);return acc+(s?weight(s):0);},0);}
   function lightestClass(){return[...classes].sort((a,b)=>classWeight(a.id)-classWeight(b.id))[0];}
   function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
 
   function distributeBalanced(group){
-    const PTAGS=['우수','부진','지도','수급','다문화','도움'];
+    const PTAGS=getBalanceTags();
     const tagRarity={};PTAGS.forEach(tag=>{tagRarity[tag]=pool.filter(s=>s.tags.includes(tag)).length;});
     function getPivot(s){const own=PTAGS.filter(t=>s.tags.includes(t));if(!own.length)return null;return own.sort((a,b)=>tagRarity[a]-tagRarity[b])[0];}
     const sorted=[...group].sort((a,b)=>{
@@ -952,18 +1404,6 @@ function autoAssign(){
 
   distributeBalanced(shuffle(pool.filter(s=>s.gender==='남')));
   distributeBalanced(shuffle(pool.filter(s=>s.gender==='여')));
-
-  if(splitTwins){
-    pool.filter(s=>s.tags.includes('쌍둥이')&&s.twin).forEach(s=>{
-      const twin=pool.find(t=>t.name===s.twin);if(!twin)return;
-      const mc=classes.find(c=>assignments[c.id].includes(s.id));
-      const tc=classes.find(c=>assignments[c.id].includes(twin.id));
-      if(mc&&tc&&mc.id===tc.id){
-        const oc=[...classes].filter(c=>c.id!==mc.id).sort((a,b)=>classWeight(a.id)-classWeight(b.id))[0];
-        if(oc){assignments[mc.id]=assignments[mc.id].filter(id=>id!==twin.id);assignments[oc.id].push(twin.id);}
-      }
-    });
-  }
 
   rules.forEach(r=>{
     const sA=pool.find(s=>s.id===r.idA),sB=pool.find(s=>s.id===r.idB);if(!sA||!sB)return;
@@ -1027,7 +1467,7 @@ function renderAssign(){
     const clsStudents=(assignments[cls.id]||[]).map(id=>students.find(s=>s.id===id)).filter(Boolean).sort((a,b)=>a.name.localeCompare(b.name,'ko'));
     const males=clsStudents.filter(s=>s.gender==='남').length;
     const females=clsStudents.filter(s=>s.gender==='여').length;
-    const wt=clsStudents.reduce((acc,s)=>acc+(s.tags.includes('도움')?2:1),0);
+    const wt=clsStudents.reduce((acc,s)=>acc+(s.tags.includes('도움')?doumWeight:1),0);
     const hasDoum=clsStudents.some(s=>s.tags.includes('도움'));
     html+=`<div class="class-box cc-${idx+1}" id="drop-${cls.id}" ondragover="event.preventDefault()" ondrop="dropStudent(event,'${cls.id}')">
       <div class="class-header">
@@ -1075,16 +1515,18 @@ function studentCardHtml(s,inAssign=false){
   const extra=s.tags.length-MAX_CHIPS;
   const tagChips=shown.map(t=>`<span style="font-size:.68rem;font-weight:700;padding:1px 5px;border-radius:4px;background:${TAG_BG[t]||'#f1f5f9'};color:${TAG_COLOR[t]||'#64748b'};white-space:nowrap">${TAG_SHORT[t]||t}</span>`).join('');
   const extraChip=extra>0?`<span style="font-size:.68rem;font-weight:700;padding:1px 5px;border-radius:4px;background:#f1f5f9;color:#64748b">+${extra}</span>`:'';
-  const twinWarn=s.tags.includes('쌍둥이')&&s.twin&&!students.find(t=>t.id!==s.id&&t.name===s.twin)?'⚠️':'';
+  const hasReqTag=s.tags.includes('쌍둥이')||s.tags.includes('부탁');
+  const hasReqRule=rules.some(r=>r.idA===s.id||r.idB===s.id);
+  const twinWarn=hasReqTag&&!hasReqRule?'⚠️':'';
   const dblclick=inAssign?`ondblclick="openEdit('${s.id}')"`:''
   return`<div class="student-card ${bc}" draggable="true"
     ondragstart="dragStart(event,'${s.id}')" ondragend="dragEnd(event)"
     ${dblclick}
-    title="${s.grade}-${s.cls}-${s.num} ${s.name} (${s.gender})${s.tags.length?' ['+s.tags.join(',')+']':''}${s.note?'\n'+s.note:''}${twinWarn?'\n⚠️ 쌍둥이 매칭 안됨':''}">
+    title="${s.grade}-${s.cls}-${s.num} ${s.name} (${s.gender})${s.tags.length?' ['+s.tags.join(',')+']':''}${s.note?'\n'+s.note:''}${twinWarn?'\n⚠️ 배정 필수 조건 대상 미지정':''}">
     <div style="min-width:0;flex:1">
       <div style="display:flex;align-items:center;gap:4px">
         <span class="sname ${s.gender==='남'?'gender-m':'gender-f'}">${s.name}</span>
-        ${twinWarn?`<span style="font-size:.75rem" title="쌍둥이 상대(${s.twin})를 찾을 수 없음">⚠️</span>`:''}
+        ${twinWarn?`<span style="font-size:.75rem" title="쌍둥이/특별부탁 대상 학생이 지정되지 않았습니다">⚠️</span>`:''}
       </div>
       <div class="sinfo">${s.grade}-${s.cls}-${s.num}</div>
     </div>
@@ -1106,7 +1548,7 @@ function dropStudent(e,targetId){
     else showToast(`⚠️ 규칙 위반: ${v.sA.name}↔${v.sB.name} 동반 필요`,'warn');
   });
   dragStudentId=null;renderAssign();renderStatsIfActive();
-  if(document.getElementById('panel-rules').classList.contains('active'))renderViolations();
+  if(document.getElementById('panel-setup').classList.contains('active'))renderViolations();
 }
 function filterAssign(){
   const s=document.getElementById('search-assign').value.toLowerCase();
@@ -1136,10 +1578,11 @@ function clearSearchAssign(){
 function printAssign(){
   if(!classes.length){showToast('⚠️ 배정 데이터가 없습니다','warn');return;}
   const sg=[...selectedSrcGrades].map(Number);
+  const printCols=Math.min(classes.length,5);
   let html=`<html><head><meta charset="UTF-8"><title>반편성 결과</title><style>
     body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-size:12px;margin:20px}
     h2{font-size:15px;margin-bottom:12px}
-    .grid{display:grid;grid-template-columns:repeat(${classes.length},1fr);gap:12px}
+    .grid{display:grid;grid-template-columns:repeat(${printCols},1fr);gap:12px}
     .cls{border:1.5px solid #333;border-radius:6px;overflow:hidden;break-inside:avoid}
     .hdr{background:#1e3a5f;color:#fff;padding:6px 10px;font-weight:700;font-size:12px;display:flex;justify-content:space-between}
     table{width:100%;border-collapse:collapse}
@@ -1163,7 +1606,7 @@ function printAssign(){
     const females=clsStudents.filter(s=>s.gender==='여').length;
     html+=`<div class="cls"><div class="hdr"><span>${cls.name}</span><span>남${males} 여${females} 계${clsStudents.length}</span></div><table>`;
     clsStudents.forEach((s,i)=>{
-      const tags=s.tags.filter(t=>['우수','부진','지도','수급','다문화','도움'].includes(t));
+      const tags=s.tags.filter(t=>getBalanceTags().includes(t));
       html+=`<tr><td class="${s.gender==='여'?'f':''}">${i+1}</td><td>${s.name}${tags.map(t=>`<span class="tag ${t}">${t}</span>`).join('')}</td></tr>`;
     });
     html+=`</table></div>`;
@@ -1188,18 +1631,18 @@ function renderStats(){
   const sg=[...selectedSrcGrades].map(Number);
   const total=students.filter(s=>sg.includes(s.grade)).length;
   const totalAssigned=classes.reduce((acc,cls)=>acc+(assignments[cls.id]?.length||0),0);
-  const totalWeight=students.filter(s=>sg.includes(s.grade)).reduce((acc,s)=>acc+(s.tags.includes('도움')?2:1),0);
-  const wtByClass=classes.map(cls=>(assignments[cls.id]||[]).reduce((acc,id)=>{const s=students.find(st=>st.id===id);return acc+(s?.tags.includes('도움')?2:1);},0));
+  const totalWeight=students.filter(s=>sg.includes(s.grade)).reduce((acc,s)=>acc+(s.tags.includes('도움')?doumWeight:1),0);
+  const wtByClass=classes.map(cls=>(assignments[cls.id]||[]).reduce((acc,id)=>{const s=students.find(st=>st.id===id);return acc+(s?.tags.includes('도움')?doumWeight:1);},0));
 
   let html=`<div class="stats-grid">
     <div class="stat-box"><div class="stat-label">전체 학생</div><div class="stat-value">${total}</div><div class="stat-sub">기준학년</div></div>
     <div class="stat-box"><div class="stat-label">배정 완료</div><div class="stat-value" style="color:var(--green)">${totalAssigned}</div><div class="stat-sub">명</div></div>
     <div class="stat-box"><div class="stat-label">미배정</div><div class="stat-value" style="color:${total-totalAssigned>0?'var(--red)':'var(--green)'}">${total-totalAssigned}</div><div class="stat-sub">명</div></div>
-    <div class="stat-box"><div class="stat-label">가중치 합계</div><div class="stat-value" style="color:var(--orange)">${totalWeight}</div><div class="stat-sub">도움반 ×2</div></div>
+    <div class="stat-box"><div class="stat-label">가중치 합계</div><div class="stat-value" style="color:var(--orange)">${totalWeight}</div><div class="stat-sub">도움반 ×${doumWeight}</div></div>
     <div class="stat-box"><div class="stat-label">편성 반 수</div><div class="stat-value">${classes.length}</div><div class="stat-sub">반</div></div>
   </div>`;
 
-  const TLABELS=['우수','부진','지도','수급','다문화','도움'];
+  const TLABELS=getBalanceTags();
   html+=`<div class="card"><div class="card-title">⚖️ 반별 균형 현황</div><div style="overflow-x:auto"><table class="balance-table">
     <thead><tr><th>항목</th>${classes.map(cls=>`<th>${cls.name}</th>`).join('')}<th>편차</th></tr></thead><tbody>`;
 
@@ -1208,7 +1651,7 @@ function renderStats(){
   html+=`<tr><td>🏫 실제 인원</td>${counts.map(v=>`<td>${v}명</td>`).join('')}<td class="${mxC-mnC<=1?'balance-ok':'balance-warn'}">${mxC-mnC}</td></tr>`;
 
   const mxW=Math.max(...wtByClass),mnW=Math.min(...wtByClass);
-  html+=`<tr style="background:var(--orange-light)"><td>⚖️ 가중치<br><small style="color:var(--text-sub)">(도움=2명)</small></td>${wtByClass.map(v=>`<td style="font-weight:700;color:var(--orange)">${v}</td>`).join('')}<td class="${mxW-mnW<=1?'balance-ok':'balance-warn'}">${mxW-mnW}</td></tr>`;
+  html+=`<tr style="background:var(--orange-light)"><td>⚖️ 가중치<br><small style="color:var(--text-sub)">(도움=${doumWeight}명)</small></td>${wtByClass.map(v=>`<td style="font-weight:700;color:var(--orange)">${v}</td>`).join('')}<td class="${mxW-mnW<=1?'balance-ok':'balance-warn'}">${mxW-mnW}</td></tr>`;
 
   ['남','여'].forEach(g=>{
     const vals=classes.map(cls=>(assignments[cls.id]||[]).filter(id=>students.find(s=>s.id===id)?.gender===g).length);
@@ -1226,6 +1669,15 @@ function renderStats(){
   c.innerHTML=html;
 }
 
+function getRuleNoteSuffix(studentId){
+  const rs=rules.filter(r=>r.idA===studentId||r.idB===studentId);
+  if(!rs.length)return '';
+  return rs.map(r=>{
+    const otherId=r.idA===studentId?r.idB:r.idA;
+    const other=students.find(s=>s.id===otherId);
+    return other?`[${r.type}요청:${other.name}]`:'';
+  }).filter(Boolean).join(' ');
+}
 // ── 엑셀 출력 ──
 async function exportExcel(){
   if(!classes.length||!students.length){showToast('⚠️ 배정 데이터가 없습니다','warn');return;}
@@ -1246,14 +1698,14 @@ async function exportExcel(){
   const sorted={};classes.forEach(c=>{sorted[c.id]=(assignments[c.id]||[]).map(id=>students.find(st=>st.id===id)).filter(Boolean).sort((a,b)=>a.name.localeCompare(b.name,'ko'));});
   const maxRows=Math.max(...classes.map(c=>sorted[c.id].length));
   for(let r=0;r<maxRows;r++){
-    const row=[];classes.forEach(c=>{const s=sorted[c.id][r]||null;if(s){row.push(s.name);row.push(s.tags.join(', ')+(s.note?` [${s.note}]`:''));}else{row.push('');row.push('');}});
+    const row=[];classes.forEach(c=>{const s=sorted[c.id][r]||null;if(s){row.push(s.name);const noteFull=[s.note,getRuleNoteSuffix(s.id)].filter(Boolean).join(' ');row.push(s.tags.join(', ')+(noteFull?` [${noteFull}]`:''));}else{row.push('');row.push('');}});
     const wsRow=ws1.addRow(row);
     classes.forEach((c,ci)=>{
       const s=sorted[c.id][r]||null;if(!s)return;
       const nc=wsRow.getCell(ci*2+1),tc=wsRow.getCell(ci*2+2);
       nc.font={color:{argb:s.gender==='남'?'FF1D4ED8':'FFBE185D'},bold:s.tags.includes('수급'),italic:s.tags.includes('다문화'),size:10};
       nc.alignment={horizontal:'center'};
-      const ft=['우수','부진','지도','수급','다문화','도움'].find(t=>s.tags.includes(t));
+      const ft=getBalanceTags().find(t=>s.tags.includes(t));
       if(ft&&TAG_BG[ft])nc.fill={type:'pattern',pattern:'solid',fgColor:{argb:TAG_BG[ft]}};
       tc.font={size:9,color:{argb:'FF6B7280'}};tc.alignment={horizontal:'left'};
       [nc,tc].forEach(cell=>{cell.border={top:{style:'thin',color:{argb:'FFE5E7EB'}},bottom:{style:'thin',color:{argb:'FFE5E7EB'}},left:{style:'thin',color:{argb:'FFE5E7EB'}},right:{style:'thin',color:{argb:'FFE5E7EB'}}};});
@@ -1266,15 +1718,15 @@ async function exportExcel(){
   ws2.addRow(['항목',...classes.map(c=>c.name),'편차']);ws2.getRow(1).eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A5F'}};cell.alignment={horizontal:'center'};});
   const addSR=(label,vals)=>{const mx=Math.max(...vals),mn=Math.min(...vals);const row=ws2.addRow([label,...vals.map(v=>v+'명'),(mx-mn)+'']);row.getCell(1).font={bold:true};row.eachCell((cell,i)=>{cell.alignment={horizontal:'center'};cell.border={bottom:{style:'hair',color:{argb:'FFE5E7EB'}}};});ws2.getCell(row.number,classes.length+2).font={bold:true,color:{argb:(mx-mn)<=1?'FF16A34A':(mx-mn)<=2?'FFD97706':'FFEF4444'}};};
   addSR('전체 인원',classes.map(c=>(assignments[c.id]||[]).length));
-  const wtVals=classes.map(c=>(assignments[c.id]||[]).reduce((acc,id)=>acc+(students.find(s=>s.id===id)?.tags.includes('도움')?2:1),0));
-  const wr=ws2.addRow(['가중치(도움×2)',...wtVals.map(v=>v+''),''+(Math.max(...wtVals)-Math.min(...wtVals))]);wr.getCell(1).font={bold:true};wr.eachCell((cell,i)=>{cell.alignment={horizontal:'center'};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFEDD5'}};cell.font={color:{argb:'FFC2410C'},bold:true};});
+  const wtVals=classes.map(c=>(assignments[c.id]||[]).reduce((acc,id)=>acc+(students.find(s=>s.id===id)?.tags.includes('도움')?doumWeight:1),0));
+  const wr=ws2.addRow([`가중치(도움×${doumWeight})`,...wtVals.map(v=>v+''),''+(Math.max(...wtVals)-Math.min(...wtVals))]);wr.getCell(1).font={bold:true};wr.eachCell((cell,i)=>{cell.alignment={horizontal:'center'};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFEDD5'}};cell.font={color:{argb:'FFC2410C'},bold:true};});
   addSR('남학생',classes.map(c=>(assignments[c.id]||[]).filter(id=>students.find(s=>s.id===id)?.gender==='남').length));
   addSR('여학생',classes.map(c=>(assignments[c.id]||[]).filter(id=>students.find(s=>s.id===id)?.gender==='여').length));
-  ['우수','부진','지도','수급','다문화','도움'].forEach(tag=>{const vals=classes.map(c=>(assignments[c.id]||[]).filter(id=>students.find(s=>s.id===id)?.tags.includes(tag)).length);if(vals.some(v=>v>0))addSR(tag,vals);});
+  getBalanceTags().forEach(tag=>{const vals=classes.map(c=>(assignments[c.id]||[]).filter(id=>students.find(s=>s.id===id)?.tags.includes(tag)).length);if(vals.some(v=>v>0))addSR(tag,vals);});
   ws2.columns.forEach((col,i)=>{col.width=i===0?16:12;});
 
   const ws3=wb.addWorksheet('학생 원본');ws3.addRow(['학년','반','번호','이름','성별','특성','메모']);ws3.getRow(1).eachCell(cell=>{cell.font={bold:true};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF1F5F9'}};});
-  students.filter(s=>sg.includes(s.grade)).sort((a,b)=>a.cls-b.cls||a.num-b.num).forEach(s=>ws3.addRow([s.grade+'학년',s.cls+'반',s.num||'',s.name,s.gender,s.tags.join('/'),s.note]));
+  students.filter(s=>sg.includes(s.grade)).sort((a,b)=>a.cls-b.cls||a.num-b.num).forEach(s=>ws3.addRow([s.grade+'학년',s.cls+'반',s.num||'',s.name,s.gender,s.tags.join('/'),[s.note,getRuleNoteSuffix(s.id)].filter(Boolean).join(' ')]));
   ws3.columns=[{width:8},{width:6},{width:6},{width:12},{width:6},{width:30},{width:30}];
 
   const buf=await wb.xlsx.writeBuffer();
@@ -1282,6 +1734,7 @@ async function exportExcel(){
   const url=URL.createObjectURL(blob);const a=document.createElement('a');
   const d=new Date();const ds=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
   a.href=url;a.download=`반편성결과_${ds}.xlsx`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+  lastExportAt=Date.now();checkBackupReminder();
   showToast('✅ 엑셀 파일 다운로드 완료');
 }
 
@@ -1293,11 +1746,19 @@ function selectRuleType(type){
   bt.classList.toggle('active',type==='동반');bt.classList.toggle('tog',type==='동반');
   document.getElementById('rule-type-desc').textContent=type==='분리'?'두 학생을 서로 다른 반에 배정합니다.':'두 학생을 반드시 같은 반에 배정합니다.';
 }
+function selectReqRuleType(scope,type){
+  if(scope==='req')reqRuleType=type;else reqEditRuleType=type;
+  const bs=document.getElementById(`rtype-${scope}-분리`),bt=document.getElementById(`rtype-${scope}-동반`);
+  bs.classList.toggle('active',type==='분리');bs.classList.toggle('sep',type==='분리');
+  bt.classList.toggle('active',type==='동반');bt.classList.toggle('tog',type==='동반');
+}
 function searchRuleStudent(slot){
   const val=document.getElementById(`rule-search-${slot}`).value.trim();
   const dd=document.getElementById(`rule-dropdown-${slot}`);
   if(!val){dd.style.display='none';return;}
-  const matches=students.filter(s=>s.name.includes(val)||String(s.cls).includes(val)).slice(0,8);
+  let pool=students;
+  if(slot==='reqEdit'&&editingId)pool=students.filter(s=>s.id!==editingId);
+  const matches=pool.filter(s=>s.name.includes(val)||String(s.cls).includes(val)).slice(0,8);
   if(!matches.length){dd.style.display='none';return;}
   dd.innerHTML=matches.map(s=>`<div class="rule-dropdown-item" onclick="selectRuleStudent('${slot}','${s.id}')"><span class="di-name ${s.gender==='남'?'gender-m':'gender-f'}">${s.name}</span><span class="di-info">${s.grade}-${s.cls}-${s.num} (${s.gender})</span></div>`).join('');
   dd.style.display='block';
@@ -1305,7 +1766,7 @@ function searchRuleStudent(slot){
 window.searchRuleStudent=searchRuleStudent;
 function selectRuleStudent(slot,id){
   const s=students.find(s=>s.id===id);if(!s)return;
-  if(slot==='a')ruleSelectedA=s;else ruleSelectedB=s;
+  ruleSelected[slot]=s;
   document.getElementById(`rule-search-${slot}`).value='';
   document.getElementById(`rule-dropdown-${slot}`).style.display='none';
   const el=document.getElementById(`rule-selected-${slot}`);el.style.display='flex';
@@ -1313,26 +1774,26 @@ function selectRuleStudent(slot,id){
 }
 window.selectRuleStudent=selectRuleStudent;
 function clearRuleStudent(slot){
-  if(slot==='a')ruleSelectedA=null;else ruleSelectedB=null;
+  ruleSelected[slot]=null;
   document.getElementById(`rule-selected-${slot}`).style.display='none';
   document.getElementById(`rule-search-${slot}`).value='';
 }
 window.clearRuleStudent=clearRuleStudent;
 function addRule(){
-  if(!ruleSelectedA){showToast('⚠️ 학생 A를 선택해주세요','warn');return;}
-  if(!ruleSelectedB){showToast('⚠️ 학생 B를 선택해주세요','warn');return;}
-  if(ruleSelectedA.id===ruleSelectedB.id){showToast('⚠️ 같은 학생입니다','warn');return;}
-  const dup=rules.find(r=>(r.idA===ruleSelectedA.id&&r.idB===ruleSelectedB.id)||(r.idA===ruleSelectedB.id&&r.idB===ruleSelectedA.id));
+  if(!ruleSelected.a){showToast('⚠️ 학생 A를 선택해주세요','warn');return;}
+  if(!ruleSelected.b){showToast('⚠️ 학생 B를 선택해주세요','warn');return;}
+  if(ruleSelected.a.id===ruleSelected.b.id){showToast('⚠️ 같은 학생입니다','warn');return;}
+  const dup=rules.find(r=>(r.idA===ruleSelected.a.id&&r.idB===ruleSelected.b.id)||(r.idA===ruleSelected.b.id&&r.idB===ruleSelected.a.id));
   if(dup){showToast('⚠️ 이미 등록된 규칙입니다','warn');return;}
   const note=document.getElementById('rule-note').value.trim();
-  rules.push({id:uid(),type:currentRuleType,idA:ruleSelectedA.id,idB:ruleSelectedB.id,note});
+  rules.push({id:uid(),type:currentRuleType,idA:ruleSelected.a.id,idB:ruleSelected.b.id,note});
   clearRuleStudent('a');clearRuleStudent('b');document.getElementById('rule-note').value='';
   renderRulesList();updateBadges();showToast(`✅ ${currentRuleType} 규칙 등록 완료`);
 }
 window.addRule=addRule;
 function deleteRule(id){rules=rules.filter(r=>r.id!==id);renderRulesList();updateBadges();renderViolations();renderAssignIfActive();}
 window.deleteRule=deleteRule;
-function clearRules(){if(!rules.length)return;if(!confirm('규칙 전체를 삭제하시겠습니까?'))return;rules=[];renderRulesList();updateBadges();renderAssignIfActive();}
+function clearRules(){if(!rules.length)return;if(!confirm('규칙 전체를 삭제하시겠습니까?'))return;const snapRules=JSON.parse(JSON.stringify(rules));rules=[];renderRulesList();updateBadges();renderAssignIfActive();showUndoToast('🗑 규칙 전체 삭제됨',()=>{rules=snapRules;renderRulesList();updateBadges();renderAssignIfActive();showToast('↩ 복구되었습니다');});}
 window.clearRules=clearRules;
 function renderRulesList(){
   const c=document.getElementById('rules-list');if(!c)return;
@@ -1367,6 +1828,7 @@ document.addEventListener('click',e=>{['a','b'].forEach(slot=>{if(!e.target.clos
 // ── 유틸 ──
 function updateBadges(){
   document.getElementById('badge-students').textContent=students.length;
+  document.getElementById('badge-upload-students').textContent=students.length;
   document.getElementById('badge-rules').textContent=rules.length;
   const sg=[...selectedSrcGrades].map(Number);
   const total=students.filter(s=>sg.includes(s.grade)).length;
@@ -1374,9 +1836,13 @@ function updateBadges(){
   document.getElementById('badge-unassigned').textContent=total-assigned;
   // 상태 변경 시 자동 저장 (래핑 없이 직접 호출)
   saveSession();
+  checkBackupReminder();
+  renderRulesList();
+  const rulesSummary=document.getElementById('rules-summary');
+  if(rulesSummary)rulesSummary.textContent=`${rules.length}개 등록됨`;
   // 규칙 위반 배지 실시간 표시
   const vs=getViolations();
-  const ruleTab=document.getElementById('tab-rules');
+  const ruleTab=document.getElementById('tab-setup');
   let vBadge=ruleTab.querySelector('.violation-badge');
   if(vs.length){
     if(!vBadge){vBadge=document.createElement('span');vBadge.className='violation-badge';ruleTab.appendChild(vBadge);}
@@ -1387,19 +1853,80 @@ function updateBadges(){
 }
 function clearStudents(){
   if(!confirm('학생 전체를 삭제하시겠습니까?'))return;
+  const snap=snapshotState();
   students=[];unassigned=[];classes.forEach(c=>{assignments[c.id]=[];});
-  renderStudentList();updateBadges();showToast('🗑 전체 학생 삭제');
+  renderStudentList();updateBadges();
+  showUndoToast('🗑 학생 전체 삭제됨',()=>restoreState(snap));
 }
 function clearAll(){
   const msg=students.length
-    ? `학생 ${students.length}명을 포함한 모든 데이터가 삭제됩니다.\n이 작업은 되돌릴 수 없습니다. 초기화하시겠습니까?`
+    ? `학생 ${students.length}명을 포함한 모든 데이터가 삭제됩니다.\n초기화하시겠습니까? (초기화 직후 5초간 되돌리기 가능)`
     : '모든 데이터를 초기화하시겠습니까?';
   if(!confirm(msg))return;
+  const snap=snapshotState();
   students=[];unassigned=[];classes=[];assignments={};rules=[];
   assignHistory=[];
   sessionStorage.removeItem(SESSION_KEY);
-  renderStudentList();renderRulesList();updateBadges();showToast('🗑 전체 초기화 완료');
+  renderStudentList();renderRulesList();updateBadges();
+  showUndoToast('🗑 전체 초기화 완료',()=>restoreState(snap));
 }
+// ── 실행취소 토스트 (파괴적 작업용) ──
+let undoToastTimer=null,pendingUndo=null;
+function showUndoToast(message,restoreFn){
+  const ex=document.querySelector('.undo-toast');if(ex)ex.remove();
+  clearTimeout(undoToastTimer);
+  pendingUndo=restoreFn;
+  const el=document.createElement('div');el.className='undo-toast';
+  el.innerHTML=`<span>${message}</span><button class="undo-btn" onclick="runPendingUndo()">↩ 되돌리기</button><button onclick="this.parentElement.remove();pendingUndo=null">닫기</button>`;
+  document.body.appendChild(el);
+  undoToastTimer=setTimeout(()=>{el.remove();pendingUndo=null;},5000);
+}
+function runPendingUndo(){
+  if(pendingUndo)pendingUndo();
+  const el=document.querySelector('.undo-toast');if(el)el.remove();
+  pendingUndo=null;
+}
+function snapshotState(){
+  return {
+    students:JSON.parse(JSON.stringify(students)),
+    classes:JSON.parse(JSON.stringify(classes)),
+    assignments:JSON.parse(JSON.stringify(assignments)),
+    unassigned:[...unassigned],
+    rules:JSON.parse(JSON.stringify(rules)),
+    customTagDefs:JSON.parse(JSON.stringify(customTagDefs)),
+    enabledTags:[...enabledTags]
+  };
+}
+function restoreState(snap){
+  students=snap.students;classes=snap.classes;assignments=snap.assignments;unassigned=snap.unassigned;
+  rules=snap.rules;customTagDefs=snap.customTagDefs;enabledTags=new Set(snap.enabledTags);
+  renderStudentList();renderRulesList();renderTagEnableSettings();renderTagSelectors();updateFormatGuideText();
+  renderAssignIfActive();renderStatsIfActive();updateBadges();
+  showToast('↩ 복구되었습니다');
+}
+
+// ── 백업(엑셀 출력) 리마인더 ──
+let lastExportAt=null,backupSnoozeUntil=0;
+const BACKUP_STUDENT_THRESHOLD=10,BACKUP_INTERVAL_MS=10*60*1000;
+function dismissBackupReminder(){
+  document.getElementById('backup-reminder-banner').style.display='none';
+  backupSnoozeUntil=Date.now()+BACKUP_INTERVAL_MS;
+}
+function checkBackupReminder(){
+  const banner=document.getElementById('backup-reminder-banner');if(!banner)return;
+  if(students.length<BACKUP_STUDENT_THRESHOLD||Date.now()<backupSnoozeUntil){banner.style.display='none';return;}
+  const elapsed=lastExportAt?Date.now()-lastExportAt:Infinity;
+  if(elapsed>BACKUP_INTERVAL_MS){
+    banner.style.display='flex';
+    document.getElementById('backup-reminder-text').textContent=lastExportAt
+      ?`⚠️ 마지막 엑셀 백업 후 ${Math.round(elapsed/60000)}분 경과 — 저장 기능이 없어 브라우저를 닫으면 데이터가 사라집니다.`
+      :`⚠️ 학생 ${students.length}명을 입력했지만 아직 엑셀로 백업하지 않았습니다. 브라우저를 닫으면 데이터가 사라집니다.`;
+  }else{
+    banner.style.display='none';
+  }
+}
+setInterval(checkBackupReminder,60*1000);
+
 let toastTimer;
 function showToast(msg,type){
   const ex=document.querySelector('.toast');if(ex)ex.remove();clearTimeout(toastTimer);
@@ -1410,14 +1937,23 @@ function showToast(msg,type){
 
 // ── 세션 저장/복원 ──
 const SESSION_KEY='bpe_session';
-function saveSession(){try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({students,classes,assignments,rules,selectedSrcGrades:[...selectedSrcGrades]}));}catch(e){}}
+function saveSession(){try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({students,classes,assignments,rules,selectedSrcGrades:[...selectedSrcGrades],enabledTags:[...enabledTags],customTagDefs,lastDownloadedVersionId,doumWeight}));}catch(e){}}
 function loadSession(){
   try{
     const raw=sessionStorage.getItem(SESSION_KEY);if(!raw)return false;
     const data=JSON.parse(raw);if(!data.students)return false;
     students=data.students||[];classes=data.classes||[];assignments=data.assignments||{};rules=data.rules||[];
     selectedSrcGrades=new Set(data.selectedSrcGrades||['5']);
+    enabledTags=new Set(data.enabledTags||TAG_DEFS.map(t=>t.key));
+    customTagDefs=data.customTagDefs||[];
+    lastDownloadedVersionId=data.lastDownloadedVersionId||null;
+    doumWeight=data.doumWeight||2;
+    const dwEl=document.getElementById('opt-doum-weight');
+    if(dwEl)dwEl.value=doumWeight;
+    const desc=document.getElementById('balance-doum-desc');
+    if(desc)desc.textContent=`학습도움반 1명 = 실질 ${doumWeight}명으로 계산`;
     document.querySelectorAll('#src-grade-pills .grade-pill').forEach(el=>{el.classList.toggle('active',selectedSrcGrades.has(el.dataset.grade));});
+    autoSetTargetGrade();
     return true;
   }catch(e){return false;}
 }
@@ -1432,6 +1968,14 @@ function closeTabletNotice(){
   el.style.opacity='0';
   el.style.borderBottom='none';
   setTimeout(()=>{el.style.display='none';},420);
+  document.getElementById('tablet-notice-reopen').classList.add('show');
+}
+function reopenTabletNotice(){
+  const el=document.getElementById('tablet-notice');
+  if(!el)return;
+  el.style.display='flex';
+  el.style.maxHeight='';el.style.padding='';el.style.opacity='';el.style.borderBottom='';
+  document.getElementById('tablet-notice-reopen').classList.remove('show');
 }
 // 태블릿 환경일 때만 5초 후 자동 소멸
 if(window.innerWidth>=768&&window.innerWidth<=1199){
@@ -1442,10 +1986,15 @@ if(window.innerWidth>=768&&window.innerWidth<=1199){
 // DOM이 완전히 준비된 후 이벤트 바인딩
 document.getElementById('setup-num-classes').addEventListener('change',()=>renderClassNameInputs());
 document.getElementById('excel-dropzone').addEventListener('click',()=>document.getElementById('excel-file-input').click());
+populateClassNumberSelect();
 renderClassNameInputs();
+autoSetTargetGrade();
 
 const restored=loadSession();
+renderTagSelectors();renderTagEnableSettings();updateFormatGuideText();
+refreshSettingsVersion();
 renderStudentList();updateBadges();selectRuleType('분리');
+updateStepProgress('setup');
 if(restored){
   const n=classes.length;
   if(n>0){

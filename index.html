@@ -1342,6 +1342,14 @@ async function downloadSampleExcel(){
     const hr=ws.addRow(headers);
     hr.eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A5F'}};cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};});
     hr.height=32;
+    // 특성 열 헤더는 각 특성 고유색으로 표시 (상태 열 바로 옆부터)
+    activeDefs.forEach((t,i)=>{
+      const colIdx=tagStartCol+i;
+      const bg=TAG_BG[t.key]||FALLBACK_BG;
+      const cell=hr.getCell(colIdx);
+      cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:bg}};
+      cell.font={bold:true,color:{argb:'FF374151'}};
+    });
     for(let num=1;num<=MAX_NUM;num++){
       const row=[srcGrade,sheetIdx,num,'','','재학',...activeDefs.map(()=>''),'','',''];
       const r=ws.addRow(row);
@@ -1401,6 +1409,11 @@ async function downloadSampleExcel(){
       const target=tagTargets.hasOwnProperty(t.key)?tagTargets[t.key]:null;
       const thisRow=statRow;
       addStatRow(t.excelHeader,{formula:`COUNTIFS(${letter}${firstDataRow}:${letter}${lastDataRow},"<>",${statusColLetter}${firstDataRow}:${statusColLetter}${lastDataRow},"재학")`},target);
+      // 통계의 특성 행도 헤더와 동일한 고유색 배경으로 표시
+      const bg=TAG_BG[t.key]||FALLBACK_BG;
+      const labelCell=ws.getRow(thisRow).getCell(statLabelCol);
+      labelCell.fill={type:'pattern',pattern:'solid',fgColor:{argb:bg}};
+      labelCell.font={size:10,bold:true,color:{argb:'FF374151'}};
       // 5) 목표 인원 초과 시 경고(빨강), 정확히 일치 시 정상(초록) 표시
       if(target!==null){
         const countAddr=`${statCountL}${thisRow}`,targetAddr=`${statTargetL}${thisRow}`;

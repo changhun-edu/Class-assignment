@@ -520,13 +520,13 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
         <div style="margin-bottom:14px;padding:8px 12px;background:var(--amber-light);color:var(--amber);border-radius:var(--r);font-size:.82rem;font-weight:600">
           ⚠️ 학년·반·번호는 <u>전년도(현재)</u> 기준입니다. 새 학년도 반 배정 결과가 아닙니다.
         </div>
-        <button class="btn btn-success" style="width:100%" onclick="downloadSampleExcel()">⬇ 서식 파일 다운로드</button>
+        <button class="btn btn-excel" style="width:100%;padding:13px;font-size:1rem;font-weight:800" onclick="downloadSampleExcel()">⬇ 서식 파일 다운로드</button>
         <div class="mt-16" style="border-top:1px solid var(--border);padding-top:14px">
           <div class="flex-row" style="font-size:.82rem;color:var(--text-sub);font-weight:600;gap:8px">
             <span>① 다운로드</span><span>→</span><span>② 엑셀에서 명단 입력</span><span>→</span><span>③ 업로드</span>
           </div>
         </div>
-        <div class="mt-16"><button class="btn btn-primary" style="width:100%" onclick="switchTab('upload')">→ 작성 완료 후 엑셀 업로드로 이동</button></div>
+        <div class="mt-16"><button class="btn btn-secondary" style="width:100%" onclick="switchTab('upload')">→ 작성 완료 후 엑셀 업로드로 이동</button></div>
       </div>
       <div class="card" id="template-preview-card">
         <div class="card-title">📋 서식 미리보기</div>
@@ -855,6 +855,7 @@ function autoSetTargetGrade(){
   const hint=document.getElementById('target-grade-hint');
   if(hint)hint.textContent=`기준 학년(${[...selectedSrcGrades].sort().join(',')}학년) 기준 자동 설정됨`;
   updateTemplateSettingsSummary();
+  updateFormatGuideText();
 }
 
 // ── 특성 사용 설정 렌더링 ──
@@ -933,13 +934,15 @@ function updateUploadEmptyStateSummary(){
 function updateFormatGuideText(){
   const el=document.getElementById('template-preview-table');if(!el)return;
   const activeDefs=allTagDefs().filter(t=>enabledTags.has(t.key));
-  const headers=['학년','반','번호','이름','성별',...activeDefs.map(t=>t.excelHeader),'분리대상','동반대상','메모'];
+  const srcGrade=+([...selectedSrcGrades][0]||5);
+  const headerLabel=(t)=>tagTargets.hasOwnProperty(t.key)?`${t.excelHeader}(목표${tagTargets[t.key]}명)`:t.excelHeader;
+  const headers=['학년','반','번호','이름','성별',...activeDefs.map(headerLabel),'분리대상','동반대상','메모'];
   const sampleBase=[
     {name:'김도연',gender:'여',tag:activeDefs[0]?.key,sep:'',pair:'1-2 박철수'},
     {name:'박철수',gender:'남',tag:activeDefs[1]?.key,sep:'',pair:''}
   ];
   const rows=sampleBase.map((s,i)=>{
-    const cells=['5',i%2===0?'1':'1',String(i+1),s.name,s.gender,...activeDefs.map(t=>t.key===s.tag?'O':''),s.sep,s.pair,''];
+    const cells=[String(srcGrade),'1',String(i+1),s.name,s.gender,...activeDefs.map(t=>t.key===s.tag?'O':''),s.sep,s.pair,''];
     return `<tr>${cells.map(c=>`<td>${c}</td>`).join('')}</tr>`;
   }).join('');
   el.innerHTML=`<thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody>`;
@@ -1094,43 +1097,50 @@ function handleExcelFile(file){
   reader.onload=(e)=>{
     try{
       const wb=XLSX.read(e.target.result,{type:'array'});
-      const ws=wb.Sheets[wb.SheetNames[0]];
-      const firstCell=ws['A1'];
-      const headerStartRow=(firstCell&&String(firstCell.v||'').trim().startsWith('※'))?1:0;
-      const rows=XLSX.utils.sheet_to_json(ws,{defval:'',range:headerStartRow});
-      if(!rows.length){showToast('⚠️ 데이터가 없습니다','warn');return;}
       const metaWs=wb.Sheets['_meta'];
       const uploadedVersion=metaWs&&metaWs['A1']?String(metaWs['A1'].v):null;
       checkUploadVersion(uploadedVersion);
       const COL={grade:['학년'],cls:['반'],num:['번호','출석번호','출번'],name:['이름','성명'],gender:['성별'],note:['메모','비고','부탁내용'],sep:['분리대상','분리 대상'],pair:['동반대상','동반 대상']};
       allTagDefs().forEach(t=>{if(enabledTags.has(t.key))COL[t.key]=TAG_COL_CANDS[t.key]||[t.excelHeader];});
-      const headers=Object.keys(rows[0]);const keyMap={};
-      for(const[k,cands]of Object.entries(COL)){for(const c of cands){const f=headers.find(h=>h.trim()===c);if(f){keyMap[k]=f;break;}}}
-      if(!keyMap.name){
-        const recognized=Object.entries(keyMap).map(([k,v])=>v).join(', ')||'없음';
-        showToast(`⚠️ "이름" 열을 찾을 수 없습니다. 인식된 열: ${Object.keys(rows[0]).join(', ')}`, 'warn');
-        return;
-      }
+      const stripTarget=(h)=>h.trim().replace(/\(목표\s*\d+\s*명\)/,'').trim();
       const TAG_KEYS=allTagDefs().filter(t=>enabledTags.has(t.key)).map(t=>t.key);
       const isTrue=(v)=>v!==''&&v!==0&&v!=='0'&&v!==false&&v!=='X'&&v!=='x';
-      pendingExcelStudents=[];let errors=0;
-      rows.forEach(row=>{
-        const name=String(row[keyMap.name]||'').trim();if(!name){errors++;return;}
-        const grade=keyMap.grade?+row[keyMap.grade]||5:5;
-        const cls=keyMap.cls?+row[keyMap.cls]||1:1;
-        const num=keyMap.num?+row[keyMap.num]||0:0;
-        const gRaw=keyMap.gender?String(row[keyMap.gender]).trim():'남';
-        const gender=gRaw==='여'?'여':'남';
-        const tags=TAG_KEYS.filter(t=>keyMap[t]&&isTrue(row[keyMap[t]]));
-        const note=keyMap.note?String(row[keyMap.note]||'').trim():'';
-        const sepRaw=keyMap.sep?String(row[keyMap.sep]||'').trim():'';
-        const pairRaw=keyMap.pair?String(row[keyMap.pair]||'').trim():'';
-        const s={id:uid(),grade,cls,num,name,gender,tags,note};
-        if(sepRaw)s._sepRaw=sepRaw;
-        if(pairRaw)s._pairRaw=pairRaw;
-        pendingExcelStudents.push(s);
+      const dataSheetNames=wb.SheetNames.filter(n=>n!=='_meta');
+      pendingExcelStudents=[];let errors=0;let anyRows=false;
+      dataSheetNames.forEach(sheetName=>{
+        const ws=wb.Sheets[sheetName];if(!ws)return;
+        const firstCell=ws['A1'];
+        const headerStartRow=(firstCell&&String(firstCell.v||'').trim().startsWith('※'))?1:0;
+        const rows=XLSX.utils.sheet_to_json(ws,{defval:'',range:headerStartRow});
+        if(!rows.length)return;
+        anyRows=true;
+        const headers=Object.keys(rows[0]);const keyMap={};
+        for(const[k,cands]of Object.entries(COL)){for(const c of cands){const f=headers.find(h=>stripTarget(h)===c);if(f){keyMap[k]=f;break;}}}
+        if(!keyMap.name)return; // 이 시트엔 인식 가능한 이름 열이 없음 (형식이 다른 시트로 간주하고 건너뜀)
+        rows.forEach(row=>{
+          const name=String(row[keyMap.name]||'').trim();
+          const otherFilled=Object.values(row).some(v=>String(v||'').trim()!=='') ;
+          if(!name){
+            if(otherFilled)errors++; // 이름 없이 다른 값만 있으면 입력 실수로 간주
+            return; // 완전히 빈 줄은 조용히 건너뜀 (서식의 미사용 번호 칸)
+          }
+          const grade=keyMap.grade?+row[keyMap.grade]||5:5;
+          const cls=keyMap.cls?+row[keyMap.cls]||1:1;
+          const num=keyMap.num?+row[keyMap.num]||0:0;
+          const gRaw=keyMap.gender?String(row[keyMap.gender]).trim():'남';
+          const gender=gRaw==='여'?'여':'남';
+          const tags=TAG_KEYS.filter(t=>keyMap[t]&&isTrue(row[keyMap[t]]));
+          const note=keyMap.note?String(row[keyMap.note]||'').trim():'';
+          const sepRaw=keyMap.sep?String(row[keyMap.sep]||'').trim():'';
+          const pairRaw=keyMap.pair?String(row[keyMap.pair]||'').trim():'';
+          const s={id:uid(),grade,cls,num,name,gender,tags,note};
+          if(sepRaw)s._sepRaw=sepRaw;
+          if(pairRaw)s._pairRaw=pairRaw;
+          pendingExcelStudents.push(s);
+        });
       });
-      if(!pendingExcelStudents.length){showToast('⚠️ 유효한 데이터가 없습니다','warn');return;}
+      if(!anyRows){showToast('⚠️ 데이터가 없습니다','warn');return;}
+      if(!pendingExcelStudents.length){showToast('⚠️ 유효한 데이터가 없습니다 (이름이 입력된 행이 없습니다)','warn');return;}
       showExcelPreview(file.name,errors);
     }catch(err){showToast('⚠️ 파일 오류: '+err.message,'warn');}
   };
@@ -1311,29 +1321,32 @@ function cancelExcelImport(){
   updateUploadEmptyStateSummary();
 }
 async function downloadSampleExcel(){
-  const wb=new ExcelJS.Workbook();const ws=wb.addWorksheet('학생명단');
+  const wb=new ExcelJS.Workbook();
   const activeDefs=allTagDefs().filter(t=>enabledTags.has(t.key));
-  const headers=['학년','반','번호','이름','성별',...activeDefs.map(t=>t.excelHeader),'분리대상','동반대상','메모'];
-  const noteRow=ws.addRow(['※ 학년/반/번호는 전년도(현재) 기준입니다. 새 학년도 반 배정 결과가 아닙니다. 분리·동반 대상은 "반-번호 이름" 형식으로 입력하세요 (예: 2-15 박영희).']);
-  ws.mergeCells(1,1,1,headers.length);
-  noteRow.getCell(1).font={italic:true,bold:true,color:{argb:'FF9A3412'}};
-  noteRow.getCell(1).alignment={horizontal:'left',vertical:'middle'};
-  noteRow.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF7ED'}};
-  noteRow.height=20;
-  const hr=ws.addRow(headers);
-  hr.eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A5F'}};cell.alignment={horizontal:'center'};});
-  const sampleBase=[
-    {grade:5,cls:1,num:1,name:'김도연',gender:'여',tags:['우수'],sep:'',pair:'1-2 박철수',note:''},
-    {grade:5,cls:1,num:2,name:'박철수',gender:'남',tags:['부진'],sep:'',pair:'',note:''},
-    {grade:5,cls:2,num:1,name:'최민준',gender:'남',tags:['지도'],sep:'2-2 왕레이',pair:'',note:''},
-    {grade:5,cls:2,num:2,name:'왕레이',gender:'남',tags:['도움'],sep:'',pair:'',note:''}
-  ];
-  sampleBase.forEach((s,i)=>{
-    const row=[s.grade,s.cls,s.num,s.name,s.gender,...activeDefs.map(t=>s.tags.includes(t.key)?'O':''),s.sep,s.pair,s.note];
-    const r=ws.addRow(row);
-    if(i%2===1)r.eachCell(c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF8F9FB'}};});
-  });
-  ws.columns=[{width:6},{width:5},{width:6},{width:12},{width:6},...activeDefs.map(t=>({width:t.key==='도움'?10:8})),{width:14},{width:14},{width:24}];
+  const srcGrade=+([...selectedSrcGrades][0]||5);
+  const numSheets=classes.length||4;
+  const headerLabel=(t)=>tagTargets.hasOwnProperty(t.key)?`${t.excelHeader}(목표${tagTargets[t.key]}명)`:t.excelHeader;
+  const headers=['학년','반','번호','이름','성별',...activeDefs.map(headerLabel),'분리대상','동반대상','메모'];
+  const MAX_NUM=20;
+
+  for(let sheetIdx=1;sheetIdx<=numSheets;sheetIdx++){
+    const ws=wb.addWorksheet(`${sheetIdx}반`);
+    const noteRow=ws.addRow([`※ 학년/반/번호는 전년도(현재) 기준입니다. 새 학년도 반 배정 결과가 아닙니다. 분리·동반 대상은 반드시 같은 학년(${srcGrade}학년) 안에서만 "반-번호 이름" 형식으로 입력하세요 (예: 2-15 박영희 = ${srcGrade}학년 2반 15번 박영희).`]);
+    ws.mergeCells(1,1,1,headers.length);
+    noteRow.getCell(1).font={italic:true,bold:true,color:{argb:'FF9A3412'}};
+    noteRow.getCell(1).alignment={horizontal:'left',vertical:'middle',wrapText:true};
+    noteRow.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF7ED'}};
+    noteRow.height=32;
+    const hr=ws.addRow(headers);
+    hr.eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A5F'}};cell.alignment={horizontal:'center'};});
+    for(let num=1;num<=MAX_NUM;num++){
+      const row=[srcGrade,sheetIdx,num,'','',...activeDefs.map(()=>''),'','',''];
+      const r=ws.addRow(row);
+      if(num%2===0)r.eachCell(c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF8F9FB'}};});
+    }
+    ws.columns=[{width:6},{width:5},{width:6},{width:12},{width:6},...activeDefs.map(t=>({width:t.key==='도움'?10:14})),{width:14},{width:14},{width:24}];
+  }
+
   if(!settingsVersionId)refreshSettingsVersion();
   const wsMeta=wb.addWorksheet('_meta');wsMeta.state='veryHidden';wsMeta.getCell('A1').value=settingsVersionId;
   const buf=await wb.xlsx.writeBuffer();

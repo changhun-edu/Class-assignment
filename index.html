@@ -302,12 +302,7 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
     </div>
     <div class="header-actions">
       <button class="btn btn-secondary btn-sm" onclick="startTour()">❓ 사용법</button>
-      <button class="btn btn-excel btn-sm" id="btn-finalize" onclick="toggleFinalize()">✅ 최종 확정</button>
       <button class="btn btn-destructive btn-sm" onclick="clearAll()">🗑 전체초기화</button>
-      <div style="position:relative;display:inline-flex">
-        <button class="btn btn-excel btn-sm" onclick="exportExcel()">📊 엑셀 출력</button>
-        <span id="export-badge" title="마지막 출력 이후 수정된 건수" style="display:none;position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;font-size:.68rem;font-weight:700;min-width:18px;height:18px;border-radius:9px;align-items:center;justify-content:center;padding:0 4px;line-height:1">0</span>
-      </div>
     </div>
   </header>
 
@@ -407,12 +402,14 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
 
     <!-- ① 설정하기 & 서식받기 -->
     <div class="panel active" id="panel-setup">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+      <div>
       <div class="flex-row" style="align-items:center;gap:10px;margin-bottom:12px">
         <span style="background:var(--primary);color:#fff;font-size:.78rem;font-weight:800;padding:3px 10px;border-radius:10px;letter-spacing:.02em">STEP 1</span>
         <b style="font-size:1rem">반 설정 및 배정 규칙</b>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
-      <div class="card" id="setup-card">
+      <div style="display:flex;flex-direction:column;gap:16px">
+      <div class="card" id="setup-card" style="max-width:680px">
         <div class="card-title">⚙️ 편성할 학년 및 반 수 설정</div>
         <div class="mt-12">
           <label>① 기준 학년 (현재 학년) — 배정 대상 학생들의 현재 학년</label>
@@ -436,10 +433,8 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
           <label>🏷️ 반 이름 설정</label>
           <div id="class-name-inputs" class="form-row mt-4"></div>
         </div>
-        <div id="setup-dirty-hint" style="display:none;margin-top:14px;padding:8px 12px;background:var(--amber-light);color:var(--amber);border-radius:var(--r);font-size:.82rem;font-weight:600">⚠️ 적용되지 않은 변경사항이 있습니다. 아래 "설정 적용"을 눌러주세요.</div>
-        <div class="mt-16"><button class="btn btn-primary" onclick="applySetup()">✅ 설정 적용</button></div>
       </div>
-      <div class="card" id="tag-settings-card">
+      <div class="card" id="tag-settings-card" style="max-width:680px">
         <div class="flex-row-between" style="cursor:pointer" onclick="toggleAccordion('tag-settings-body')">
           <div class="card-title" style="margin:0">✅ 학생 배정 규칙</div>
           <div style="display:flex;align-items:center;gap:8px">
@@ -507,33 +502,27 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
         </div>
       </div>
       </div>
+      <div id="setup-dirty-hint" style="display:none;margin-top:16px;padding:8px 12px;background:var(--amber-light);color:var(--amber);border-radius:var(--r);font-size:.82rem;font-weight:600;max-width:680px">⚠️ 적용되지 않은 변경사항이 있습니다. 아래 "설정 적용"을 눌러주세요.</div>
+      <div class="mt-16"><button class="btn btn-primary" onclick="applySetup()">✅ 반 설정 적용</button></div>
+      </div>
 
-      <div class="flex-row" style="align-items:center;gap:10px;margin:24px 0 12px">
+      <div>
+      <div class="flex-row" style="align-items:center;gap:10px;margin-bottom:12px">
         <span style="background:var(--primary);color:#fff;font-size:.78rem;font-weight:800;padding:3px 10px;border-radius:10px;letter-spacing:.02em">STEP 2</span>
         <b style="font-size:1rem">엑셀 서식 받기</b>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
       <div class="card" id="template-download-card">
         <div class="card-title">⬇️ 학생 명단 서식 다운로드</div>
         <div id="template-settings-summary" style="font-size:.82rem;color:var(--text-sub);background:var(--surface2);border-radius:var(--r);padding:8px 12px;margin-bottom:12px"></div>
         <div id="template-version-banner" style="display:none;margin-bottom:12px;padding:8px 12px;border-radius:var(--r);font-size:.82rem;background:var(--amber-light);color:var(--amber);border:1px solid #fde68a"></div>
-        <div style="margin-bottom:14px;padding:8px 12px;background:var(--amber-light);color:var(--amber);border-radius:var(--r);font-size:.82rem;font-weight:600">
-          ⚠️ 학년·반·번호는 <u>전년도(현재)</u> 기준입니다. 새 학년도 반 배정 결과가 아닙니다.
-        </div>
         <button class="btn btn-excel" style="width:100%;padding:13px;font-size:1rem;font-weight:800" onclick="downloadSampleExcel()">⬇ 서식 파일 다운로드</button>
         <div class="mt-16" style="border-top:1px solid var(--border);padding-top:14px">
-          <div class="flex-row" style="font-size:.82rem;color:var(--text-sub);font-weight:600;gap:8px">
-            <span>① 다운로드</span><span>→</span><span>② 엑셀에서 명단 입력</span><span>→</span><span>③ 업로드</span>
+          <div style="font-size:.82rem;color:var(--text-sub);font-weight:600;line-height:2">
+            ① 다운로드 → ② 엑셀에서 명단 입력 → ③ 업로드
           </div>
         </div>
         <div class="mt-16"><button class="btn btn-secondary" style="width:100%" onclick="switchTab('upload')">→ 작성 완료 후 엑셀 업로드로 이동</button></div>
       </div>
-      <div class="card" id="template-preview-card">
-        <div class="card-title">📋 서식 미리보기</div>
-        <div style="font-size:.82rem;color:var(--text-sub);margin-bottom:10px">현재 설정 기준으로 실제 만들어질 열 구성입니다 (예시 데이터 포함).</div>
-        <div style="overflow-x:auto;border:1px solid var(--border);border-radius:var(--r)">
-          <table class="student-table" id="template-preview-table" style="font-size:.78rem"></table>
-        </div>
       </div>
       </div>
     </div>
@@ -555,6 +544,12 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
         <div class="flex-row">
           <button class="btn btn-secondary btn-sm" id="btn-toggle-stats" onclick="toggleStatsPanel()">⚖️ 통계</button>
           <button class="btn btn-secondary btn-sm" id="btn-toggle-students" onclick="toggleStudentPanel()">👤 학생 관리 <span class="pill badge" id="badge-students">0</span></button>
+          <span style="width:1px;align-self:stretch;background:var(--border);margin:2px 4px"></span>
+          <button class="btn btn-excel btn-sm" id="btn-finalize" onclick="toggleFinalize()">✅ 최종 확정</button>
+          <div style="position:relative;display:inline-flex">
+            <button class="btn btn-excel btn-sm" onclick="exportExcel()">📊 엑셀 출력</button>
+            <span id="export-badge" title="마지막 출력 이후 수정된 건수" style="display:none;position:absolute;top:-6px;right:-6px;background:var(--red);color:#fff;font-size:.68rem;font-weight:700;min-width:18px;height:18px;border-radius:9px;align-items:center;justify-content:center;padding:0 4px;line-height:1">0</span>
+          </div>
         </div>
       </div>
       <div id="assign-board-wrap">
@@ -892,9 +887,9 @@ function renderTagEnableSettings(){
       const target=tagTargets[t.key];
       const mismatch=actual>0&&actual!==target;
       statusHtml=`<span style="display:flex;align-items:center;gap:8px;font-size:.82rem;color:var(--text-sub);white-space:nowrap">
-        <span class="pill" style="background:var(--green-light);color:var(--green);font-size:.75rem;padding:3px 10px">⚖️ 균형 반영</span>
-        선정 목표 <input type="number" id="opt-target-${t.key}" min="0" max="999" value="${target}" style="width:48px;padding:3px 6px" oninput="onTagTargetChange('${t.key}')" onclick="event.stopPropagation()" ${checked?'':'disabled'}>명
+        <input type="number" id="opt-target-${t.key}" min="0" max="999" value="${target}" style="width:48px;padding:3px 6px" oninput="onTagTargetChange('${t.key}')" onclick="event.stopPropagation()" ${checked?'':'disabled'}>명 선정
         <span id="tag-count-${t.key}" style="color:var(--amber);display:${mismatch?'inline':'none'}">${mismatch?`(현재 ${actual}명)`:''}</span>
+        <span class="pill" style="background:var(--green-light);color:var(--green);font-size:.75rem;padding:3px 10px">⚖️ 균형 반영</span>
       </span>`;
     }else if(t.key==='도움'){
       wideRow=true;
@@ -932,20 +927,6 @@ function updateUploadEmptyStateSummary(){
   el.innerHTML=`📌 현재 설정 기준으로 인식합니다: <b>${classes.length}개 반</b> · 특성 <b>${activeCount}개</b> 사용`;
 }
 function updateFormatGuideText(){
-  const el=document.getElementById('template-preview-table');if(!el)return;
-  const activeDefs=allTagDefs().filter(t=>enabledTags.has(t.key));
-  const srcGrade=+([...selectedSrcGrades][0]||5);
-  const headerLabel=(t)=>tagTargets.hasOwnProperty(t.key)?`${t.excelHeader}(목표${tagTargets[t.key]}명)`:t.excelHeader;
-  const headers=['학년','반','번호','이름','성별',...activeDefs.map(headerLabel),'분리대상','동반대상','메모'];
-  const sampleBase=[
-    {name:'김도연',gender:'여',tag:activeDefs[0]?.key,sep:'',pair:'1-2 박철수'},
-    {name:'박철수',gender:'남',tag:activeDefs[1]?.key,sep:'',pair:''}
-  ];
-  const rows=sampleBase.map((s,i)=>{
-    const cells=[String(srcGrade),'1',String(i+1),s.name,s.gender,...activeDefs.map(t=>t.key===s.tag?'O':''),s.sep,s.pair,''];
-    return `<tr>${cells.map(c=>`<td>${c}</td>`).join('')}</tr>`;
-  }).join('');
-  el.innerHTML=`<thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>${rows}</tbody>`;
   updateTemplateSettingsSummary();
 }
 
@@ -963,10 +944,14 @@ function refreshSettingsVersion(){
 }
 function updateTemplateVersionBanner(){
   const b=document.getElementById('template-version-banner');if(!b)return;
+  if(!lastDownloadedVersionId){
+    b.style.display='none';
+    return;
+  }
   b.style.display='block';
   if(lastDownloadedVersionId!==settingsVersionId){
     b.style.background='var(--amber-light)';b.style.color='var(--amber)';b.style.borderColor='#fde68a';
-    b.textContent=lastDownloadedVersionId?'⚠️ 설정이 마지막 서식 다운로드 이후 변경되었습니다. 서식을 다시 받아주세요.':'ℹ️ 아직 서식을 다운로드하지 않았습니다.';
+    b.textContent='⚠️ 설정이 마지막 서식 다운로드 이후 변경되었습니다. 서식을 다시 받아주세요.';
   }else{
     b.style.background='var(--green-light)';b.style.color='var(--green)';b.style.borderColor='#bbf7d0';
     b.textContent='✅ 현재 설정과 일치하는 서식입니다.';
@@ -1492,7 +1477,7 @@ function applySetup(){
   // 적용 버튼 피드백
   const btn=document.querySelector('[onclick="applySetup()"]');
   if(btn){btn.textContent='✅ 설정 적용됨';btn.style.background='var(--green)';btn.style.color='#fff';
-    setTimeout(()=>{btn.textContent='✅ 설정 적용';btn.style.background='';btn.style.color='';},2000);}
+    setTimeout(()=>{btn.textContent='✅ 반 설정 적용';btn.style.background='';btn.style.color='';},2000);}
   showToast(countChanged?'✅ 반 설정 적용 완료 — ④ 배정 작업으로 이동하세요':'✅ 반 이름이 갱신되었습니다 (배정 결과 유지됨)');
 }
 function renderClassNameInputs(savedNames){

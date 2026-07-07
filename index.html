@@ -402,7 +402,7 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
 
     <!-- ① 설정하기 & 서식받기 -->
     <div class="panel active" id="panel-setup">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start">
+      <div style="display:grid;grid-template-columns:3fr 2fr;gap:20px;align-items:start">
       <div>
       <div class="flex-row" style="align-items:center;gap:10px;margin-bottom:12px">
         <span style="background:var(--primary);color:#fff;font-size:.78rem;font-weight:800;padding:3px 10px;border-radius:10px;letter-spacing:.02em">STEP 1</span>
@@ -511,7 +511,7 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
         <span style="background:var(--primary);color:#fff;font-size:.78rem;font-weight:800;padding:3px 10px;border-radius:10px;letter-spacing:.02em">STEP 2</span>
         <b style="font-size:1rem">엑셀 서식 받기</b>
       </div>
-      <div class="card" id="template-download-card">
+      <div class="card" id="template-download-card" style="max-width:480px">
         <div class="card-title">⬇️ 학생 명단 서식 다운로드</div>
         <div id="template-settings-summary" style="font-size:.82rem;color:var(--text-sub);background:var(--surface2);border-radius:var(--r);padding:8px 12px;margin-bottom:12px"></div>
         <div id="template-version-banner" style="display:none;margin-bottom:12px;padding:8px 12px;border-radius:var(--r);font-size:.82rem;background:var(--amber-light);color:var(--amber);border:1px solid #fde68a"></div>
@@ -841,6 +841,7 @@ function toggleSrcGrade(el,grade){
   selectedSrcGrades=new Set([grade]);
   document.querySelectorAll('#src-grade-pills .grade-pill').forEach(p=>{p.classList.toggle('active',p.dataset.grade===grade);});
   autoSetTargetGrade();
+  saveSession();
 }
 function autoSetTargetGrade(){
   const sel=document.getElementById('setup-grade');if(!sel)return;
@@ -962,6 +963,7 @@ function toggleEnabledTag(key,checked){
   if(checked){enabledTags.add(key);}
   else{enabledTags.delete(key);activeTags.delete(key);editTags.delete(key);}
   renderTagEnableSettings();renderTagSelectors();updateFormatGuideText();refreshSettingsVersion();
+  saveSession();
   showToast(checked?`✅ '${def.label}' 특성 사용`:`⛔ '${def.label}' 특성 미사용으로 설정`);
 }
 
@@ -1001,6 +1003,7 @@ function addCustomTag(){
   tagTargets[key]=target;
   hideCustomTagForm();
   renderTagEnableSettings();renderTagSelectors();updateFormatGuideText();refreshSettingsVersion();
+  saveSession();
   showToast(`✅ '${name}' 특성 추가 완료`);
 }
 function removeCustomTag(key){
@@ -1015,11 +1018,13 @@ function removeCustomTag(key){
   delete tagTargets[key];
   students.forEach(s=>{s.tags=s.tags.filter(t=>t!==key);});
   renderTagEnableSettings();renderTagSelectors();updateFormatGuideText();refreshSettingsVersion();renderStudentList();
+  saveSession();
   showUndoToast(`🗑 '${def.label}' 특성 삭제됨`,()=>{
     customTagDefs=snapCustomTags;enabledTags=new Set(snapEnabled);
     if(snapTarget!==undefined)tagTargets[key]=snapTarget;
     snapStudentTags.forEach(st=>{const s=students.find(x=>x.id===st.id);if(s)s.tags=st.tags;});
     renderTagEnableSettings();renderTagSelectors();updateFormatGuideText();refreshSettingsVersion();renderStudentList();
+    saveSession();
     showToast('↩ 복구되었습니다');
   });
 }
@@ -1087,7 +1092,7 @@ function handleExcelFile(file){
       checkUploadVersion(uploadedVersion);
       const COL={grade:['학년'],cls:['반'],num:['번호','출석번호','출번'],name:['이름','성명'],gender:['성별'],note:['메모','비고','부탁내용'],sep:['분리대상','분리 대상'],pair:['동반대상','동반 대상']};
       allTagDefs().forEach(t=>{if(enabledTags.has(t.key))COL[t.key]=TAG_COL_CANDS[t.key]||[t.excelHeader];});
-      const stripTarget=(h)=>h.trim().replace(/\(목표\s*\d+\s*명\)/,'').trim();
+      const stripTarget=(h)=>h.replace(/\n/g,'').replace(/\(\s*\d+\s*명\s*선정\s*\)/,'').trim();
       const TAG_KEYS=allTagDefs().filter(t=>enabledTags.has(t.key)).map(t=>t.key);
       const isTrue=(v)=>v!==''&&v!==0&&v!=='0'&&v!==false&&v!=='X'&&v!=='x';
       const dataSheetNames=wb.SheetNames.filter(n=>n!=='_meta');
@@ -1310,26 +1315,42 @@ async function downloadSampleExcel(){
   const activeDefs=allTagDefs().filter(t=>enabledTags.has(t.key));
   const srcGrade=+([...selectedSrcGrades][0]||5);
   const numSheets=classes.length||4;
-  const headerLabel=(t)=>tagTargets.hasOwnProperty(t.key)?`${t.excelHeader}(목표${tagTargets[t.key]}명)`:t.excelHeader;
+  const headerLabel=(t)=>tagTargets.hasOwnProperty(t.key)?`${t.excelHeader}\n(${tagTargets[t.key]}명 선정)`:t.excelHeader;
   const headers=['학년','반','번호','이름','성별',...activeDefs.map(headerLabel),'분리대상','동반대상','메모'];
   const MAX_NUM=20;
+  // 최종 출력물과 동일한 특성별 색상 (일관성 유지)
+  const TAG_BG={'우수':'FFFDE68A','부진':'FFFECACA','지도':'FFE9D5FF','수급':'FFFED7AA','다문화':'FFE0F2FE','도움':'FFD1FAE5'};
+  const FALLBACK_BG='FFE0E7FF';
+  const colLetter=(n)=>{let s='';while(n>0){const m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=Math.floor((n-1)/26);}return s;};
 
   for(let sheetIdx=1;sheetIdx<=numSheets;sheetIdx++){
     const ws=wb.addWorksheet(`${sheetIdx}반`);
-    const noteRow=ws.addRow([`※ 학년/반/번호는 전년도(현재) 기준입니다. 새 학년도 반 배정 결과가 아닙니다. 분리·동반 대상은 반드시 같은 학년(${srcGrade}학년) 안에서만 "반-번호 이름" 형식으로 입력하세요 (예: 2-15 박영희 = ${srcGrade}학년 2반 15번 박영희).`]);
+    const noteRow=ws.addRow([`※ 학년/반/번호는 전년도(현재) 기준입니다. 새 학년도 반 배정 결과가 아닙니다.\n분리·동반 대상은 반드시 같은 학년(${srcGrade}학년) 안에서만 "반-번호 이름" 형식으로 입력하세요 (예: 2-15 박영희 = ${srcGrade}학년 2반 15번 박영희). 특성 해당 학생은 ○로 표시하세요.`]);
     ws.mergeCells(1,1,1,headers.length);
     noteRow.getCell(1).font={italic:true,bold:true,color:{argb:'FF9A3412'}};
     noteRow.getCell(1).alignment={horizontal:'left',vertical:'middle',wrapText:true};
     noteRow.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFF7ED'}};
     noteRow.height=32;
     const hr=ws.addRow(headers);
-    hr.eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A5F'}};cell.alignment={horizontal:'center'};});
+    hr.eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A5F'}};cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};});
+    hr.height=32;
     for(let num=1;num<=MAX_NUM;num++){
       const row=[srcGrade,sheetIdx,num,'','',...activeDefs.map(()=>''),'','',''];
       const r=ws.addRow(row);
       if(num%2===0)r.eachCell(c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF8F9FB'}};});
     }
-    ws.columns=[{width:6},{width:5},{width:6},{width:12},{width:6},...activeDefs.map(t=>({width:t.key==='도움'?10:14})),{width:14},{width:14},{width:24}];
+    ws.columns=[{width:6},{width:5},{width:6},{width:12},{width:6},...activeDefs.map(t=>({width:t.key==='도움'?10:16})),{width:16},{width:16},{width:24}];
+    // 특성 열: ○ 등으로 입력하면 즉시 해당 특성 색으로 칠해지는 조건부 서식
+    const firstDataRow=3,lastDataRow=3+MAX_NUM-1;
+    activeDefs.forEach((t,i)=>{
+      const colIdx=6+i; // A=학년..E=성별(5) 다음부터 특성 열 시작(6번째 열=F)
+      const letter=colLetter(colIdx);
+      const bg=TAG_BG[t.key]||FALLBACK_BG;
+      ws.addConditionalFormatting({
+        ref:`${letter}${firstDataRow}:${letter}${lastDataRow}`,
+        rules:[{type:'expression',formulae:[`${letter}${firstDataRow}<>""`],style:{fill:{type:'pattern',pattern:'solid',bgColor:{argb:bg}}}}]
+      });
+    });
   }
 
   if(!settingsVersionId)refreshSettingsVersion();
@@ -1474,6 +1495,7 @@ function applySetup(){
   updateTemplateSettingsSummary();
   clearSetupDirty();
   renderAssignIfActive();
+  saveSession();
   // 적용 버튼 피드백
   const btn=document.querySelector('[onclick="applySetup()"]');
   if(btn){btn.textContent='✅ 설정 적용됨';btn.style.background='var(--green)';btn.style.color='#fff';
@@ -2086,7 +2108,7 @@ function loadSession(){
     return true;
   }catch(e){return false;}
 }
-window.addEventListener('beforeunload',e=>{if(!students.length)return;saveSession();e.preventDefault();e.returnValue=''});
+window.addEventListener('beforeunload',e=>{if(!students.length&&!classes.length)return;saveSession();e.preventDefault();e.returnValue=''});
 
 // ── 태블릿 배너 자동 소멸 ──
 function closeTabletNotice(){

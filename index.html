@@ -1090,13 +1090,13 @@ function handleExcelFile(file){
       const metaWs=wb.Sheets['_meta'];
       const uploadedVersion=metaWs&&metaWs['A1']?String(metaWs['A1'].v):null;
       checkUploadVersion(uploadedVersion);
-      const COL={grade:['학년'],cls:['반'],num:['번호','출석번호','출번'],name:['이름','성명'],gender:['성별'],note:['메모','비고','부탁내용'],sep:['분리대상','분리 대상'],pair:['동반대상','동반 대상']};
+      const COL={grade:['학년'],cls:['반'],num:['번호','출석번호','출번'],name:['이름','성명'],gender:['성별'],status:['상태','재학여부'],note:['메모','비고','부탁내용'],sep:['분리대상','분리 대상'],pair:['동반대상','동반 대상']};
       allTagDefs().forEach(t=>{if(enabledTags.has(t.key))COL[t.key]=TAG_COL_CANDS[t.key]||[t.excelHeader];});
       const stripTarget=(h)=>h.replace(/\n/g,'').replace(/\(\s*\d+\s*명\s*선정\s*\)/,'').trim();
       const TAG_KEYS=allTagDefs().filter(t=>enabledTags.has(t.key)).map(t=>t.key);
       const isTrue=(v)=>v!==''&&v!==0&&v!=='0'&&v!==false&&v!=='X'&&v!=='x';
       const dataSheetNames=wb.SheetNames.filter(n=>n!=='_meta');
-      pendingExcelStudents=[];let errors=0;let anyRows=false;
+      pendingExcelStudents=[];let errors=0;let anyRows=false;let transferredCount=0;
       dataSheetNames.forEach(sheetName=>{
         const ws=wb.Sheets[sheetName];if(!ws)return;
         const firstCell=ws['A1'];
@@ -1109,11 +1109,13 @@ function handleExcelFile(file){
         if(!keyMap.name)return; // 이 시트엔 인식 가능한 이름 열이 없음 (형식이 다른 시트로 간주하고 건너뜀)
         rows.forEach(row=>{
           const name=String(row[keyMap.name]||'').trim();
-          const otherFilled=Object.values(row).some(v=>String(v||'').trim()!=='') ;
+          const otherFilled=Object.values(keyMap).some(col=>col!==keyMap.name&&String(row[col]||'').trim()!=='');
           if(!name){
             if(otherFilled)errors++; // 이름 없이 다른 값만 있으면 입력 실수로 간주
             return; // 완전히 빈 줄은 조용히 건너뜀 (서식의 미사용 번호 칸)
           }
+          const status=keyMap.status?String(row[keyMap.status]||'').trim():'재학';
+          if(status==='전학'){transferredCount++;return;} // 전학 처리된 학생은 반배정 대상에서 자동 제외
           const grade=keyMap.grade?+row[keyMap.grade]||5:5;
           const cls=keyMap.cls?+row[keyMap.cls]||1:1;
           const num=keyMap.num?+row[keyMap.num]||0:0;
@@ -1131,6 +1133,7 @@ function handleExcelFile(file){
       });
       if(!anyRows){showToast('⚠️ 데이터가 없습니다','warn');return;}
       if(!pendingExcelStudents.length){showToast('⚠️ 유효한 데이터가 없습니다 (이름이 입력된 행이 없습니다)','warn');return;}
+      if(transferredCount)showToast(`ℹ️ 전학 처리된 ${transferredCount}명은 자동으로 제외되었습니다`);
       showExcelPreview(file.name,errors);
     }catch(err){showToast('⚠️ 파일 오류: '+err.message,'warn');}
   };
@@ -1316,16 +1319,21 @@ async function downloadSampleExcel(){
   const srcGrade=+([...selectedSrcGrades][0]||5);
   const numSheets=classes.length||4;
   const headerLabel=(t)=>tagTargets.hasOwnProperty(t.key)?`${t.excelHeader}\n(${tagTargets[t.key]}명 선정)`:t.excelHeader;
-  const headers=['학년','반','번호','이름','성별',...activeDefs.map(headerLabel),'분리대상','동반대상','메모'];
-  const MAX_NUM=20;
+  const headers=['학년','반','번호','이름','성별','상태',...activeDefs.map(headerLabel),'분리대상','동반대상','메모'];
+  const MAX_NUM=25;
   // 최종 출력물과 동일한 특성별 색상 (일관성 유지)
   const TAG_BG={'우수':'FFFDE68A','부진':'FFFECACA','지도':'FFE9D5FF','수급':'FFFED7AA','다문화':'FFE0F2FE','도움':'FFD1FAE5'};
   const FALLBACK_BG='FFE0E7FF';
   const colLetter=(n)=>{let s='';while(n>0){const m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=Math.floor((n-1)/26);}return s;};
+  const firstDataRow=3,lastDataRow=3+MAX_NUM-1;
+  const nameColLetter=colLetter(4);
+  const genderColLetter=colLetter(5);
+  const statusColLetter=colLetter(6);
+  const tagStartCol=7;
 
   for(let sheetIdx=1;sheetIdx<=numSheets;sheetIdx++){
     const ws=wb.addWorksheet(`${sheetIdx}반`);
-    const noteRow=ws.addRow([`※ 학년/반/번호는 전년도(현재) 기준입니다. 새 학년도 반 배정 결과가 아닙니다.\n분리·동반 대상은 반드시 같은 학년(${srcGrade}학년) 안에서만 "반-번호 이름" 형식으로 입력하세요 (예: 2-15 박영희 = ${srcGrade}학년 2반 15번 박영희). 특성 해당 학생은 ○로 표시하세요.`]);
+    const noteRow=ws.addRow([`※ 학년/반/번호는 전년도(현재) 기준입니다. 새 학년도 반 배정 결과가 아닙니다.\n분리·동반 대상은 반드시 같은 학년(${srcGrade}학년) 안에서만 "반-번호 이름" 형식으로 입력하세요 (예: 2-15 박영희 = ${srcGrade}학년 2반 15번 박영희). 특성 해당 학생은 ○로 표시하세요. 학기 중 전학 간 학생은 "상태"를 전학으로 바꾸면 반배정 대상에서 자동 제외됩니다.`]);
     ws.mergeCells(1,1,1,headers.length);
     noteRow.getCell(1).font={italic:true,bold:true,color:{argb:'FF9A3412'}};
     noteRow.getCell(1).alignment={horizontal:'left',vertical:'middle',wrapText:true};
@@ -1335,15 +1343,28 @@ async function downloadSampleExcel(){
     hr.eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A5F'}};cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};});
     hr.height=32;
     for(let num=1;num<=MAX_NUM;num++){
-      const row=[srcGrade,sheetIdx,num,'','',...activeDefs.map(()=>''),'','',''];
+      const row=[srcGrade,sheetIdx,num,'','','재학',...activeDefs.map(()=>''),'','',''];
       const r=ws.addRow(row);
       if(num%2===0)r.eachCell(c=>{c.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF8F9FB'}};});
     }
-    ws.columns=[{width:6},{width:5},{width:6},{width:12},{width:6},...activeDefs.map(t=>({width:t.key==='도움'?10:16})),{width:16},{width:16},{width:24}];
+    // 1) 학습도움반 등 특성 열 너비 통일 (한 줄로 보이도록)
+    ws.columns=[{width:6},{width:5},{width:6},{width:12},{width:6},{width:8},...activeDefs.map(()=>({width:16})),{width:16},{width:16},{width:24}];
+
+    // 2) 성별: 드롭다운(데이터 유효성 목록)으로 남/여 선택
+    for(let r=firstDataRow;r<=lastDataRow;r++){
+      ws.getCell(`${genderColLetter}${r}`).dataValidation={type:'list',allowBlank:true,formulae:['"남,여"'],showErrorMessage:true,errorTitle:'입력 오류',error:'목록에서 남 또는 여를 선택하세요.'};
+      ws.getCell(`${statusColLetter}${r}`).dataValidation={type:'list',allowBlank:false,formulae:['"재학,전학"'],showErrorMessage:true,errorTitle:'입력 오류',error:'목록에서 재학 또는 전학을 선택하세요.'};
+    }
+
+    // 전학 처리된 행은 회색 배경 + 취소선으로 표시 (반배정 대상에서 자동 제외됨)
+    ws.addConditionalFormatting({
+      ref:`${nameColLetter}${firstDataRow}:${colLetter(headers.length)}${lastDataRow}`,
+      rules:[{type:'expression',formulae:[`$${statusColLetter}${firstDataRow}="전학"`],style:{font:{strike:true,color:{argb:'FF9CA3AF'}},fill:{type:'pattern',pattern:'solid',bgColor:{argb:'FFF3F4F6'}}}}]
+    });
+
     // 특성 열: ○ 등으로 입력하면 즉시 해당 특성 색으로 칠해지는 조건부 서식
-    const firstDataRow=3,lastDataRow=3+MAX_NUM-1;
     activeDefs.forEach((t,i)=>{
-      const colIdx=6+i; // A=학년..E=성별(5) 다음부터 특성 열 시작(6번째 열=F)
+      const colIdx=tagStartCol+i;
       const letter=colLetter(colIdx);
       const bg=TAG_BG[t.key]||FALLBACK_BG;
       ws.addConditionalFormatting({
@@ -1351,6 +1372,45 @@ async function downloadSampleExcel(){
         rules:[{type:'expression',formulae:[`${letter}${firstDataRow}<>""`],style:{fill:{type:'pattern',pattern:'solid',bgColor:{argb:bg}}}}]
       });
     });
+
+    // 4) 메모 옆에 반별 통계 블록 (전체/성별/전학/특성별 실시간 인원 - 수식 기반)
+    const statLabelCol=headers.length+2;
+    const statCountCol=statLabelCol+1;
+    const statTargetCol=statLabelCol+2;
+    const statLabelL=colLetter(statLabelCol),statCountL=colLetter(statCountCol),statTargetL=colLetter(statTargetCol);
+    const statHeaderRow=ws.getRow(2);
+    [[statLabelCol,'📊 통계'],[statCountCol,'인원'],[statTargetCol,'목표']].forEach(([c,label])=>{
+      const cell=statHeaderRow.getCell(c);
+      cell.value=label;cell.font={bold:true,color:{argb:'FFFFFFFF'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A5F'}};cell.alignment={horizontal:'center',vertical:'middle'};
+    });
+    let statRow=3;
+    const addStatRow=(label,countFormula,target)=>{
+      const row=ws.getRow(statRow);
+      row.getCell(statLabelCol).value=label;
+      row.getCell(statCountCol).value=countFormula;
+      row.getCell(statTargetCol).value=target!==null?target:'';
+      row.getCell(statLabelCol).font={size:10};row.getCell(statCountCol).font={size:10,bold:true};row.getCell(statTargetCol).font={size:10,color:{argb:'FF6B7280'}};
+      statRow++;
+    };
+    addStatRow('전체 인원',{formula:`COUNTA(${nameColLetter}${firstDataRow}:${nameColLetter}${lastDataRow})`},null);
+    addStatRow('남',{formula:`COUNTIFS(${genderColLetter}${firstDataRow}:${genderColLetter}${lastDataRow},"남",${statusColLetter}${firstDataRow}:${statusColLetter}${lastDataRow},"재학")`},null);
+    addStatRow('여',{formula:`COUNTIFS(${genderColLetter}${firstDataRow}:${genderColLetter}${lastDataRow},"여",${statusColLetter}${firstDataRow}:${statusColLetter}${lastDataRow},"재학")`},null);
+    addStatRow('전학',{formula:`COUNTIF(${statusColLetter}${firstDataRow}:${statusColLetter}${lastDataRow},"전학")`},null);
+    activeDefs.forEach((t,i)=>{
+      const colIdx=tagStartCol+i;const letter=colLetter(colIdx);
+      const target=tagTargets.hasOwnProperty(t.key)?tagTargets[t.key]:null;
+      const thisRow=statRow;
+      addStatRow(t.excelHeader,{formula:`COUNTIFS(${letter}${firstDataRow}:${letter}${lastDataRow},"<>",${statusColLetter}${firstDataRow}:${statusColLetter}${lastDataRow},"재학")`},target);
+      // 5) 목표 인원 초과 시 경고(빨강), 정확히 일치 시 정상(초록) 표시
+      if(target!==null){
+        const countAddr=`${statCountL}${thisRow}`,targetAddr=`${statTargetL}${thisRow}`;
+        ws.addConditionalFormatting({ref:countAddr,rules:[
+          {type:'expression',formulae:[`${countAddr}>${targetAddr}`],style:{font:{bold:true,color:{argb:'FFDC2626'}},fill:{type:'pattern',pattern:'solid',bgColor:{argb:'FFFEE2E2'}}}},
+          {type:'expression',formulae:[`${countAddr}=${targetAddr}`],style:{font:{bold:true,color:{argb:'FF16A34A'}},fill:{type:'pattern',pattern:'solid',bgColor:{argb:'FFDCFCE7'}}}}
+        ]});
+      }
+    });
+    ws.getColumn(statLabelCol).width=14;ws.getColumn(statCountCol).width=8;ws.getColumn(statTargetCol).width=8;
   }
 
   if(!settingsVersionId)refreshSettingsVersion();

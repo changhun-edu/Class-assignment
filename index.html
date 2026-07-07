@@ -1315,12 +1315,13 @@ function cancelExcelImport(){
 }
 async function downloadSampleExcel(){
   const wb=new ExcelJS.Workbook();
+  wb.calcProperties.fullCalcOnLoad=true; // 통계 수식이 열자마자 재계산되도록 (안 그러면 0으로 보일 수 있음)
   const activeDefs=allTagDefs().filter(t=>enabledTags.has(t.key));
   const srcGrade=+([...selectedSrcGrades][0]||5);
   const numSheets=classes.length||4;
   const headerLabel=(t)=>tagTargets.hasOwnProperty(t.key)?`${t.excelHeader}\n(${tagTargets[t.key]}명 선정)`:t.excelHeader;
   const headers=['학년','반','번호','이름','성별','상태',...activeDefs.map(headerLabel),'분리대상','동반대상','메모'];
-  const MAX_NUM=25;
+  const MAX_NUM=30;
   // 최종 출력물과 동일한 특성별 색상 (일관성 유지)
   const TAG_BG={'우수':'FFFDE68A','부진':'FFFECACA','지도':'FFE9D5FF','수급':'FFFED7AA','다문화':'FFE0F2FE','도움':'FFD1FAE5'};
   const FALLBACK_BG='FFE0E7FF';
@@ -1414,12 +1415,16 @@ async function downloadSampleExcel(){
       const labelCell=ws.getRow(thisRow).getCell(statLabelCol);
       labelCell.fill={type:'pattern',pattern:'solid',fgColor:{argb:bg}};
       labelCell.font={size:10,bold:true,color:{argb:'FF374151'}};
-      // 5) 목표 인원 초과 시 경고(빨강), 정확히 일치 시 정상(초록) 표시
+      // 5) 목표 인원 초과 시 경고(빨강), 정확히 일치 시 정상(초록) 표시 - 통계 칸 + 해당 특성 헤더 칸 모두
       if(target!==null){
         const countAddr=`${statCountL}${thisRow}`,targetAddr=`${statTargetL}${thisRow}`;
         ws.addConditionalFormatting({ref:countAddr,rules:[
           {type:'expression',formulae:[`${countAddr}>${targetAddr}`],style:{font:{bold:true,color:{argb:'FFDC2626'}},fill:{type:'pattern',pattern:'solid',bgColor:{argb:'FFFEE2E2'}}}},
           {type:'expression',formulae:[`${countAddr}=${targetAddr}`],style:{font:{bold:true,color:{argb:'FF16A34A'}},fill:{type:'pattern',pattern:'solid',bgColor:{argb:'FFDCFCE7'}}}}
+        ]});
+        const headerAddr=`${letter}2`;
+        ws.addConditionalFormatting({ref:headerAddr,rules:[
+          {type:'expression',formulae:[`${countAddr}>${targetAddr}`],style:{font:{bold:true,color:{argb:'FFFFFFFF'}},fill:{type:'pattern',pattern:'solid',bgColor:{argb:'FFDC2626'}}}}
         ]});
       }
     });

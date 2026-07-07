@@ -326,18 +326,15 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
 
   <div class="tabs">
     <div class="tab active" onclick="switchTab('setup')" id="tab-setup">
-      ① 설정하기
+      ① 설정 &amp; 서식받기
       <span class="pill badge" id="badge-rules" style="display:none">0</span>
     </div>
-    <div class="tab" onclick="switchTab('template')" id="tab-template">
-      ② 서식받기
-    </div>
     <div class="tab" onclick="switchTab('upload')" id="tab-upload">
-      ③ 엑셀업로드
+      ② 엑셀업로드
       <span class="pill badge" id="badge-upload-students">0</span>
     </div>
     <div class="tab" onclick="switchTab('assign')" id="tab-assign">
-      ④ 배정 작업
+      ③ 배정 작업
       <span class="pill badge" id="badge-unassigned">0</span>
     </div>
   </div>
@@ -408,38 +405,7 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
       </div>
     </div>
 
-    <!-- ② 서식받기 -->
-    <div class="panel" id="panel-template">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
-        <div class="card">
-          <div class="card-title">⬇️ 학생 명단 서식 다운로드</div>
-          <div id="template-settings-summary" style="font-size:.82rem;color:var(--text-sub);background:var(--surface2);border-radius:var(--r);padding:8px 12px;margin-bottom:12px"></div>
-          <div id="template-version-banner" style="display:none;margin-bottom:12px;padding:8px 12px;border-radius:var(--r);font-size:.82rem;background:var(--amber-light);color:var(--amber);border:1px solid #fde68a"></div>
-          <div style="font-size:.87rem;color:var(--text-sub);line-height:1.7;margin-bottom:12px">
-            ① 설정하기에서 정한 반 수·특성 항목이 서식에 자동으로 반영됩니다.
-          </div>
-          <div style="margin-bottom:14px;padding:8px 12px;background:var(--amber-light);color:var(--amber);border-radius:var(--r);font-size:.82rem;font-weight:600">
-            ⚠️ 학년·반·번호는 <u>전년도(현재)</u> 기준입니다. 새 학년도 반 배정 결과가 아닙니다.
-          </div>
-          <button class="btn btn-success" style="width:100%" onclick="downloadSampleExcel()">⬇ 서식 파일 다운로드</button>
-          <div class="mt-16" style="border-top:1px solid var(--border);padding-top:14px">
-            <div class="flex-row-between" style="font-size:.82rem;color:var(--text-sub);font-weight:600">
-              <span>① 다운로드</span><span>→</span><span>② 엑셀에서 명단 입력</span><span>→</span><span>③ 업로드</span>
-            </div>
-          </div>
-          <div class="mt-16"><button class="btn btn-primary" style="width:100%" onclick="switchTab('upload')">→ 작성 완료 후 엑셀 업로드로 이동</button></div>
-        </div>
-        <div class="card">
-          <div class="card-title">📋 서식 미리보기</div>
-          <div style="font-size:.82rem;color:var(--text-sub);margin-bottom:10px">현재 설정 기준으로 실제 만들어질 열 구성입니다 (예시 데이터 포함).</div>
-          <div style="overflow-x:auto;border:1px solid var(--border);border-radius:var(--r)">
-            <table class="student-table" id="template-preview-table" style="font-size:.78rem"></table>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ① 설정하기 -->
+    <!-- ① 설정하기 & 서식받기 -->
     <div class="panel active" id="panel-setup">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
       <div class="card" id="setup-card">
@@ -468,6 +434,21 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
         </div>
         <div id="setup-dirty-hint" style="display:none;margin-top:14px;padding:8px 12px;background:var(--amber-light);color:var(--amber);border-radius:var(--r);font-size:.82rem;font-weight:600">⚠️ 적용되지 않은 변경사항이 있습니다. 아래 "설정 적용"을 눌러주세요.</div>
         <div class="mt-16"><button class="btn btn-primary" onclick="applySetup()">✅ 설정 적용</button></div>
+      </div>
+      <div class="card" id="template-download-card" style="margin-top:16px">
+        <div class="card-title">⬇️ 학생 명단 서식 다운로드</div>
+        <div id="template-settings-summary" style="font-size:.82rem;color:var(--text-sub);background:var(--surface2);border-radius:var(--r);padding:8px 12px;margin-bottom:12px"></div>
+        <div id="template-version-banner" style="display:none;margin-bottom:12px;padding:8px 12px;border-radius:var(--r);font-size:.82rem;background:var(--amber-light);color:var(--amber);border:1px solid #fde68a"></div>
+        <div style="margin-bottom:14px;padding:8px 12px;background:var(--amber-light);color:var(--amber);border-radius:var(--r);font-size:.82rem;font-weight:600">
+          ⚠️ 학년·반·번호는 <u>전년도(현재)</u> 기준입니다. 새 학년도 반 배정 결과가 아닙니다.
+        </div>
+        <button class="btn btn-success" style="width:100%" onclick="downloadSampleExcel()">⬇ 서식 파일 다운로드</button>
+        <div class="mt-16" style="border-top:1px solid var(--border);padding-top:14px">
+          <div class="flex-row-between" style="font-size:.82rem;color:var(--text-sub);font-weight:600">
+            <span>① 다운로드</span><span>→</span><span>② 엑셀에서 명단 입력</span><span>→</span><span>③ 업로드</span>
+          </div>
+        </div>
+        <div class="mt-16"><button class="btn btn-primary" style="width:100%" onclick="switchTab('upload')">→ 작성 완료 후 엑셀 업로드로 이동</button></div>
       </div>
       <div class="card" id="tag-settings-card">
         <div class="flex-row-between" style="cursor:pointer" onclick="toggleAccordion('tag-settings-body')">
@@ -510,6 +491,13 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
               <button class="btn btn-secondary btn-sm" onclick="hideCustomTagForm()">취소</button>
             </div>
           </div>
+        </div>
+      </div>
+      <div class="card" id="template-preview-card" style="margin-top:16px">
+        <div class="card-title">📋 서식 미리보기</div>
+        <div style="font-size:.82rem;color:var(--text-sub);margin-bottom:10px">현재 설정 기준으로 실제 만들어질 열 구성입니다 (예시 데이터 포함).</div>
+        <div style="overflow-x:auto;border:1px solid var(--border);border-radius:var(--r)">
+          <table class="student-table" id="template-preview-table" style="font-size:.78rem"></table>
         </div>
       </div>
       </div>
@@ -836,7 +824,7 @@ function clampNumClasses(){
 
 // ── 탭 전환 ──
 let assignScrollTop=0; // ③ 배정 탭 스크롤 위치 보존
-const STEP_ORDER=['setup','template','upload','assign'];
+const STEP_ORDER=['setup','upload','assign'];
 function updateStepProgress(name){
   const idx=STEP_ORDER.indexOf(name);
   document.querySelectorAll('#step-progress .step-dot').forEach((el,i)=>{
@@ -860,8 +848,7 @@ function switchTab(name){
     const raf = typeof requestAnimationFrame !== 'undefined' ? requestAnimationFrame : (fn=>setTimeout(fn,0));
     raf(()=>{const p=document.getElementById('panel-assign');if(p)p.scrollTop=assignScrollTop;});
   }
-  if(name==='setup'){renderRulesList();renderViolations();}
-  if(name==='template'){if(!settingsVersionId)refreshSettingsVersion();updateTemplateVersionBanner();updateFormatGuideText();updateTemplateSettingsSummary();}
+  if(name==='setup'){renderRulesList();renderViolations();if(!settingsVersionId)refreshSettingsVersion();updateTemplateVersionBanner();updateFormatGuideText();updateTemplateSettingsSummary();}
   if(name==='upload'){updateUploadEmptyStateSummary();}
 }
 
@@ -2181,11 +2168,10 @@ autoSetTargetGrade();
 const restored=loadSession();
 // ── 사용법 가이드 투어 ──
 const TOUR_STEPS=[
-  {title:'👋 스마트 반편성에 오신 것을 환영합니다',desc:'전체 흐름은 4단계입니다: <b>① 설정하기 → ② 서식받기 → ③ 엑셀업로드 → ④ 배정 작업</b>. 각 단계를 간단히 안내해드릴게요.'},
-  {title:'① 설정하기',desc:'기준 학년·반 수·반 이름을 정하고, 사용할 학생 특성(학습우수, 생활도움 등)과 분리·동반 규칙을 설정합니다. 여기서 정한 내용이 서식과 자동 배치에 그대로 반영됩니다.'},
-  {title:'② 서식받기',desc:'설정에 맞춰 자동으로 만들어진 엑셀 서식을 내려받아, 학생 명단과 특성을 입력하세요. 학년·반·번호는 <b>전년도 기준</b>입니다.'},
-  {title:'③ 엑셀업로드',desc:'작성한 파일을 올리면 내용을 확인 후 등록됩니다. 최초 등록이면 자동으로 균형 배치까지 실행됩니다. 엑셀 없이 <b>🧪 샘플 데이터</b>로 먼저 체험해볼 수도 있습니다.'},
-  {title:'④ 배정 작업',desc:'학생 카드를 드래그해서 반을 옮기거나 더블클릭으로 정보를 수정할 수 있습니다. "⚖️ 통계"·"👤 학생 관리"로 세부 내용을 확인하고, 마지막엔 "✅ 최종 확정" 후 "📊 엑셀 출력"으로 마무리하세요.'}
+  {title:'👋 스마트 반편성에 오신 것을 환영합니다',desc:'전체 흐름은 3단계입니다: <b>① 설정 &amp; 서식받기 → ② 엑셀업로드 → ③ 배정 작업</b>. 각 단계를 간단히 안내해드릴게요.'},
+  {title:'① 설정 & 서식받기',desc:'기준 학년·반 수·반 이름을 정하고, 사용할 학생 특성(학습우수, 생활도움 등)과 분리·동반 규칙을 설정합니다. 같은 화면에서 바로 설정이 반영된 엑셀 서식을 내려받아 학생 명단과 특성을 입력하세요. 학년·반·번호는 <b>전년도 기준</b>입니다.'},
+  {title:'② 엑셀업로드',desc:'작성한 파일을 올리면 내용을 확인 후 등록됩니다. 최초 등록이면 자동으로 균형 배치까지 실행됩니다. 엑셀 없이 <b>🧪 샘플 데이터</b>로 먼저 체험해볼 수도 있습니다.'},
+  {title:'③ 배정 작업',desc:'학생 카드를 드래그해서 반을 옮기거나 더블클릭으로 정보를 수정할 수 있습니다. "⚖️ 통계"·"👤 학생 관리"로 세부 내용을 확인하고, 마지막엔 "✅ 최종 확정" 후 "📊 엑셀 출력"으로 마무리하세요.'}
 ];
 let tourStep=0;
 function startTour(){tourStep=0;renderTourStep();document.getElementById('tour-modal').style.display='flex';}

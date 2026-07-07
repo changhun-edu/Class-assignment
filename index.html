@@ -451,8 +451,10 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
             <button class="btn btn-secondary btn-sm" onclick="showCustomTagForm()">+ 규칙 추가</button>
             <div style="margin-top:8px;font-size:.78rem;color:var(--text-muted)">
               예시:
-              <span class="pill pill-interactive" style="background:var(--surface2);padding:3px 10px;margin-left:4px" onclick="quickFillCustomTag('기초수급','🔵')">🔵 기초수급</span>
-              <span class="pill pill-interactive" style="background:var(--surface2);padding:3px 10px" onclick="quickFillCustomTag('이주배경','🌏')">🌏 이주배경</span>
+              <span class="pill pill-interactive" style="background:var(--surface2);padding:3px 10px;margin-left:4px" onclick="quickFillCustomTag('기초수급','🔵','distribute')">🔵 기초수급</span>
+              <span class="pill pill-interactive" style="background:var(--surface2);padding:3px 10px" onclick="quickFillCustomTag('이주배경','🌏','distribute')">🌏 이주배경</span>
+              <span class="pill pill-interactive" style="background:var(--surface2);padding:3px 10px" onclick="quickFillCustomTag('기초부진','📚','distribute')">📚 기초부진</span>
+              <span class="pill pill-interactive" style="background:var(--surface2);padding:3px 10px" onclick="quickFillCustomTag('리더십','👑','select')">👑 리더십</span>
               — 클릭하면 아래 등록칸에 자동으로 채워집니다.
             </div>
           </div>
@@ -461,10 +463,18 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
               <div><label>특성 이름</label><input type="text" id="ctag-name" placeholder="예: 안경 착용" maxlength="8"></div>
               <div><label>아이콘</label>
                 <select id="ctag-icon">
-                  <option value="🔵">🔵</option><option value="🌏">🌏</option><option value="🔖">🔖</option><option value="👓">👓</option><option value="🎯">🎯</option>
+                  <option value="🔵">🔵</option><option value="🌏">🌏</option><option value="📚">📚</option><option value="👑">👑</option><option value="🔖">🔖</option><option value="👓">👓</option><option value="🎯">🎯</option>
                   <option value="🎨">🎨</option><option value="🏃">🏃</option><option value="🎵">🎵</option>
                   <option value="💬">💬</option><option value="📌">📌</option><option value="⭐">⭐</option>
                 </select></div>
+            </div>
+            <div class="mt-12">
+              <label>유형</label>
+              <div class="flex-row mt-4">
+                <label class="rule-type-btn active sep" id="ctype-select" onclick="selectCtagType('select')">🎯 선발형 - 목표 인원 지정</label>
+                <label class="rule-type-btn" id="ctype-distribute" onclick="selectCtagType('distribute')">📊 분포형 - 있는 인원 고르게 분산</label>
+              </div>
+              <div id="ctag-type-desc" style="margin-top:6px;font-size:.8rem;color:var(--text-sub)">교사가 인원 수를 정해서 뽑는 특성입니다 (예: 리더십, 학습우수).</div>
             </div>
             <div class="mt-12" id="ctag-target-row">
               <label>선정 목표 인원</label>
@@ -977,16 +987,29 @@ function toggleAccordion(bodyId){
   if(chevron)chevron.textContent=open?'▾':'▸';
 }
 // ── 사용자 정의 특성 추가 ──
+let ctagType='select';
+function selectCtagType(type){
+  ctagType=type;
+  const bs=document.getElementById('ctype-select'),bd=document.getElementById('ctype-distribute');
+  bs.classList.toggle('active',type==='select');bs.classList.toggle('sep',type==='select');
+  bd.classList.toggle('active',type==='distribute');bd.classList.toggle('tog',type==='distribute');
+  document.getElementById('ctag-type-desc').textContent=type==='select'
+    ?'교사가 인원 수를 정해서 뽑는 특성입니다 (예: 리더십, 학습우수).'
+    :'학생마다 있고 없고가 정해져 있어 반마다 인원이 다를 수 있는 특성입니다 (예: 기초부진, 이주배경). 목표 인원 없이 있는 인원을 반별로 고르게 나눕니다.';
+  document.getElementById('ctag-target-row').style.display=type==='select'?'block':'none';
+}
 function showCustomTagForm(){document.getElementById('custom-tag-form').style.display='block';}
 function hideCustomTagForm(){
   document.getElementById('custom-tag-form').style.display='none';
   document.getElementById('ctag-name').value='';
   document.getElementById('ctag-target').value='3';
+  selectCtagType('select');
 }
-function quickFillCustomTag(name,icon){
+function quickFillCustomTag(name,icon,type){
   showCustomTagForm();
   document.getElementById('ctag-name').value=name;
   document.getElementById('ctag-icon').value=icon;
+  selectCtagType(type||'select');
   document.getElementById('ctag-name').focus();
 }
 function addCustomTag(){
@@ -997,10 +1020,12 @@ function addCustomTag(){
   const key='c_'+uid();
   customTagDefs.push({key,label:name,icon,excelHeader:name,custom:true,balance:true});
   enabledTags.add(key);
-  let target=+document.getElementById('ctag-target').value;
-  if(isNaN(target)||target<0)target=0;
-  if(target>999)target=999;
-  tagTargets[key]=target;
+  if(ctagType==='select'){
+    let target=+document.getElementById('ctag-target').value;
+    if(isNaN(target)||target<0)target=0;
+    if(target>999)target=999;
+    tagTargets[key]=target;
+  }
   hideCustomTagForm();
   renderTagEnableSettings();renderTagSelectors();updateFormatGuideText();refreshSettingsVersion();
   saveSession();

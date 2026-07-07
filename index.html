@@ -301,6 +301,8 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
       <span class="header-sub">🔒 개인정보 미저장 · 작업 후 엑셀로 내보내세요</span>
     </div>
     <div class="header-actions">
+      <button class="btn btn-secondary btn-sm" onclick="startTour()">❓ 사용법</button>
+      <button class="btn btn-excel btn-sm" id="btn-finalize" onclick="toggleFinalize()">✅ 최종 확정</button>
       <button class="btn btn-destructive btn-sm" onclick="clearAll()">🗑 전체초기화</button>
       <div style="position:relative;display:inline-flex">
         <button class="btn btn-excel btn-sm" onclick="exportExcel()">📊 엑셀 출력</button>
@@ -522,6 +524,16 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
         <div id="rules-only-body" style="display:none;margin-top:12px">
           <div style="display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start">
             <div class="card" style="box-shadow:none;border:1px solid var(--border)">
+              <div id="rule-form-no-students" style="display:none;text-align:center;padding:20px 10px">
+                <div style="font-size:1.6rem;margin-bottom:8px">👥</div>
+                <p style="font-size:.85rem;color:var(--text-sub);line-height:1.6;margin-bottom:14px">
+                  아직 등록된 학생이 없어 이름을 선택할 수 없습니다.<br>
+                  먼저 <b>③ 엑셀업로드</b>(또는 🧪 샘플 데이터)로 학생 명단을 등록한 뒤,<br>
+                  이 화면으로 돌아와 분리·동반 규칙을 추가해주세요.
+                </p>
+                <button class="btn btn-primary btn-sm" onclick="switchTab('upload')">③ 엑셀업로드로 이동</button>
+              </div>
+              <div id="rule-form-fields">
               <div style="margin-bottom:14px">
                 <label>조건 유형</label>
                 <div class="flex-row mt-4">
@@ -547,6 +559,7 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
               <div class="mt-12"><label>사유 메모 <span style="font-weight:400;color:var(--text-muted)">(선택)</span></label>
                 <input type="text" id="rule-note" placeholder="예: 쌍둥이, 작년 갈등, 형제자매"></div>
               <div class="mt-16"><button class="btn btn-primary" style="width:100%" onclick="addRule()">저장</button></div>
+              </div>
             </div>
             <div class="card" style="box-shadow:none;border:1px solid var(--border)">
               <div class="flex-row-between" style="margin-bottom:14px">
@@ -696,6 +709,20 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
   </div>
 </div>
 
+<div class="modal-overlay" id="tour-modal" style="display:none" onclick="if(event.target===this)closeTour()">
+  <div class="modal" style="max-width:440px">
+    <div class="modal-title"><span id="tour-title"></span><span class="modal-close" onclick="closeTour()">✕</span></div>
+    <div id="tour-desc" style="font-size:.9rem;color:var(--text-sub);line-height:1.7;min-height:80px"></div>
+    <div class="flex-row-between mt-16">
+      <span id="tour-progress" style="font-size:.82rem;color:var(--text-muted)"></span>
+      <div class="flex-row">
+        <button class="btn btn-secondary btn-sm" onclick="closeTour()">건너뛰기</button>
+        <button class="btn btn-primary btn-sm" onclick="tourNext()" id="tour-next-btn">다음</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── 상태 ──
 let students=[], classes=[], assignments={}, unassigned=[], rules=[];
@@ -707,7 +734,37 @@ let dragStudentId=null;
 let ruleSelected={}, currentRuleType='분리';
 let doumWeight=2;
 let changesSinceExport=0;
-function markDirty(){changesSinceExport++;updateExportBadge();}
+let isFinalized=false;
+function markDirty(){
+  changesSinceExport++;updateExportBadge();
+  if(isFinalized)showToast('⚠️ 최종 확정된 배정을 수정했습니다 — 확인 후 다시 확정해주세요','warn');
+}
+function toggleFinalize(){
+  if(!isFinalized){
+    if(!classes.length||!students.length){showToast('⚠️ 먼저 반 설정과 학생 배정을 완료해주세요','warn');return;}
+    if(!confirm('현재 배정 상태를 최종 확정하시겠습니까?\n확정 후에도 수정은 가능하지만, 수정할 때마다 경고가 표시됩니다.'))return;
+    isFinalized=true;
+    showToast('✅ 최종 확정되었습니다');
+  }else{
+    if(!confirm('확정을 해제하시겠습니까?'))return;
+    isFinalized=false;
+    showToast('🔓 확정이 해제되었습니다');
+  }
+  updateFinalizeUI();
+  saveSession();
+}
+function updateFinalizeUI(){
+  const btn=document.getElementById('btn-finalize');if(!btn)return;
+  if(isFinalized){
+    btn.innerHTML='🔒 확정됨 (해제)';
+    btn.classList.remove('btn-excel');btn.classList.add('btn-secondary');
+    btn.style.background='var(--green)';btn.style.color='#fff';btn.style.borderColor='var(--green)';
+  }else{
+    btn.innerHTML='✅ 최종 확정';
+    btn.classList.remove('btn-secondary');btn.classList.add('btn-excel');
+    btn.style.background='';btn.style.color='';btn.style.borderColor='';
+  }
+}
 function updateExportBadge(){
   const b=document.getElementById('export-badge');if(!b)return;
   if(changesSinceExport>0){b.style.display='inline-flex';b.textContent=changesSinceExport>99?'99+':changesSinceExport;}
@@ -1931,6 +1988,16 @@ function renderViolations(){
 document.addEventListener('click',e=>{['a','b'].forEach(slot=>{if(!e.target.closest(`#rule-search-${slot}`)&&!e.target.closest(`#rule-dropdown-${slot}`)){const dd=document.getElementById(`rule-dropdown-${slot}`);if(dd)dd.style.display='none';}});});
 
 // ── 유틸 ──
+function updateRuleFormAvailability(){
+  const noStudents=document.getElementById('rule-form-no-students');
+  const fields=document.getElementById('rule-form-fields');
+  if(!noStudents||!fields)return;
+  if(students.length===0){
+    noStudents.style.display='block';fields.style.display='none';
+  }else{
+    noStudents.style.display='none';fields.style.display='block';
+  }
+}
 function updateBadges(){
   document.getElementById('badge-students').textContent=students.length;
   document.getElementById('badge-upload-students').textContent=students.length;
@@ -1943,6 +2010,7 @@ function updateBadges(){
   checkBackupReminder();
   updateSampleBanner();
   renderRulesList();
+  updateRuleFormAvailability();
   refreshTagCountBadges();
   const rulesSummary=document.getElementById('rules-summary');
   if(rulesSummary)rulesSummary.textContent=`${rules.length}개 조건 등록됨`;
@@ -2049,7 +2117,7 @@ function showToast(msg,type){
 
 // ── 세션 저장/복원 ──
 const SESSION_KEY='bpe_session';
-function saveSession(){try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({students,classes,assignments,rules,selectedSrcGrades:[...selectedSrcGrades],enabledTags:[...enabledTags],customTagDefs,lastDownloadedVersionId,doumWeight,tagTargets,changesSinceExport}));}catch(e){}}
+function saveSession(){try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({students,classes,assignments,rules,selectedSrcGrades:[...selectedSrcGrades],enabledTags:[...enabledTags],customTagDefs,lastDownloadedVersionId,doumWeight,tagTargets,changesSinceExport,isFinalized}));}catch(e){}}
 function sanitizeEnabledTags(rawArray){
   if(!rawArray)return new Set(TAG_DEFS.map(t=>t.key));
   const validKeys=new Set(allTagDefs().map(t=>t.key));
@@ -2069,6 +2137,8 @@ function loadSession(){
     tagTargets=data.tagTargets?Object.assign({},defaultTargets,data.tagTargets):defaultTargets;
     changesSinceExport=data.changesSinceExport||0;
     updateExportBadge();
+    isFinalized=data.isFinalized||false;
+    updateFinalizeUI();
     if(data.excellentTarget!==undefined)tagTargets['우수']=data.excellentTarget;
     document.querySelectorAll('#src-grade-pills .grade-pill').forEach(el=>{el.classList.toggle('active',selectedSrcGrades.has(el.dataset.grade));});
     autoSetTargetGrade();
@@ -2109,6 +2179,29 @@ renderClassNameInputs();
 autoSetTargetGrade();
 
 const restored=loadSession();
+// ── 사용법 가이드 투어 ──
+const TOUR_STEPS=[
+  {title:'👋 스마트 반편성에 오신 것을 환영합니다',desc:'전체 흐름은 4단계입니다: <b>① 설정하기 → ② 서식받기 → ③ 엑셀업로드 → ④ 배정 작업</b>. 각 단계를 간단히 안내해드릴게요.'},
+  {title:'① 설정하기',desc:'기준 학년·반 수·반 이름을 정하고, 사용할 학생 특성(학습우수, 생활도움 등)과 분리·동반 규칙을 설정합니다. 여기서 정한 내용이 서식과 자동 배치에 그대로 반영됩니다.'},
+  {title:'② 서식받기',desc:'설정에 맞춰 자동으로 만들어진 엑셀 서식을 내려받아, 학생 명단과 특성을 입력하세요. 학년·반·번호는 <b>전년도 기준</b>입니다.'},
+  {title:'③ 엑셀업로드',desc:'작성한 파일을 올리면 내용을 확인 후 등록됩니다. 최초 등록이면 자동으로 균형 배치까지 실행됩니다. 엑셀 없이 <b>🧪 샘플 데이터</b>로 먼저 체험해볼 수도 있습니다.'},
+  {title:'④ 배정 작업',desc:'학생 카드를 드래그해서 반을 옮기거나 더블클릭으로 정보를 수정할 수 있습니다. "⚖️ 통계"·"👤 학생 관리"로 세부 내용을 확인하고, 마지막엔 "✅ 최종 확정" 후 "📊 엑셀 출력"으로 마무리하세요.'}
+];
+let tourStep=0;
+function startTour(){tourStep=0;renderTourStep();document.getElementById('tour-modal').style.display='flex';}
+function renderTourStep(){
+  const s=TOUR_STEPS[tourStep];
+  document.getElementById('tour-title').textContent=s.title;
+  document.getElementById('tour-desc').innerHTML=s.desc;
+  document.getElementById('tour-progress').textContent=`${tourStep+1} / ${TOUR_STEPS.length}`;
+  document.getElementById('tour-next-btn').textContent=tourStep===TOUR_STEPS.length-1?'시작하기':'다음';
+}
+function tourNext(){
+  if(tourStep<TOUR_STEPS.length-1){tourStep++;renderTourStep();}
+  else{closeTour();}
+}
+function closeTour(){document.getElementById('tour-modal').style.display='none';}
+
 renderTagSelectors();renderTagEnableSettings();updateFormatGuideText();
 refreshSettingsVersion();
 renderStudentList();updateBadges();selectRuleType('분리');
@@ -2130,6 +2223,7 @@ if(restored){
     tagCard.classList.add('attn-pulse');
     setTimeout(()=>tagCard.classList.remove('attn-pulse'),3200);
   }
+  startTour();
 }
 </script>
 </body>

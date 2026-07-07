@@ -775,10 +775,10 @@ const TAG_DEFS=[
   {key:'우수',label:'학습우수',icon:'⭐',excelHeader:'학습우수'},
   {key:'부진',label:'학습부진',icon:'📉',excelHeader:'학습부진'},
   {key:'지도',label:'생활지도',icon:'⚠️',excelHeader:'생활지도'},
-  {key:'도움',label:'학습도움반',icon:'♿',excelHeader:'학습도움반'}
+  {key:'도움',label:'특수교육',icon:'🧩',excelHeader:'특수교육'}
 ];
 const BALANCE_TAGS=['우수','부진','지도','도움']; // 자동 배치 균형/통계 대상 특성
-const TAG_COL_CANDS={우수:['학습우수','우수'],부진:['학습부진','부진'],지도:['생활지도','지도'],수급:['기초수급','수급'],다문화:['이주배경','다문화'],도움:['학습도움반','도움반','도움']};
+const TAG_COL_CANDS={우수:['학습우수','우수'],부진:['학습부진','부진'],지도:['생활지도','지도'],수급:['기초수급','수급'],다문화:['이주배경','다문화'],도움:['특수교육','학습도움반','도움반','도움']};
 let enabledTags=new Set(TAG_DEFS.map(t=>t.key));
 let customTagDefs=[]; // 사용자 추가 특성: {key,label,icon,excelHeader,custom:true,balance:bool}
 function allTagDefs(){return TAG_DEFS.concat(customTagDefs);}
@@ -1235,7 +1235,7 @@ function clearSampleData(){
 function studentKey(s){return `${s.grade}-${s.cls}-${s.num}-${s.name}`;}
 function showExcelPreview(filename,errors){
   const titleEl=document.getElementById('upload-result-title');if(titleEl)titleEl.textContent='📋 업로드 결과';
-  const TAG_ICONS={'우수':'⭐','부진':'📉','지도':'⚠️','수급':'🔵','다문화':'🌏','도움':'♿'};
+  const TAG_ICONS={'우수':'⭐','부진':'📉','지도':'⚠️','수급':'🔵','다문화':'🌏','도움':'🧩'};
   const existingKeys=new Set(students.map(studentKey));
   dupStudentsCount=pendingExcelStudents.filter(s=>existingKeys.has(studentKey(s))).length;
   document.getElementById('preview-summary').innerHTML=`<span style="color:var(--primary)">📄 ${filename}</span> → <strong>${pendingExcelStudents.length}명</strong>${errors?` <span style="color:var(--red)">(오류 ${errors}행)</span>`:''}`;
@@ -1949,7 +1949,7 @@ function renderStats(){
     html+=`<tr><td>${g==='남'?'🔵':'🔴'} ${g}학생</td>${vals.map(v=>`<td>${v}명</td>`).join('')}<td class="${mx-mn<=1?'balance-ok':'balance-warn'}">${mx-mn}</td></tr>`;
   });
   TLABELS.forEach(tag=>{
-    const icons={'우수':'⭐','부진':'📉','지도':'⚠️','수급':'🟠','다문화':'🌏','도움':'♿'};
+    const icons={'우수':'⭐','부진':'📉','지도':'⚠️','수급':'🟠','다문화':'🌏','도움':'🧩'};
     const vals=classes.map(cls=>(assignments[cls.id]||[]).filter(id=>students.find(s=>s.id===id)?.tags.includes(tag)).length);
     if(vals.every(v=>v===0))return;
     const mx=Math.max(...vals),mn=Math.min(...vals);

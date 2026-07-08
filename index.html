@@ -257,9 +257,6 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
 .undo-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:9999;background:#1a2233;color:#fff;padding:12px 16px;border-radius:var(--r);font-size:.87rem;font-weight:600;box-shadow:var(--shadow-lg);animation:slideUp .2s ease;display:flex;align-items:center;gap:12px;max-width:520px}
 .undo-toast button{background:none;border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:6px;padding:4px 10px;font-size:.82rem;font-weight:700;cursor:pointer;white-space:nowrap}
 .undo-toast button.undo-btn{background:var(--primary);border-color:var(--primary)}
-#backup-reminder-banner{display:none;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;background:var(--amber-light);color:var(--amber);border-bottom:1px solid #fde68a;font-size:.87rem;font-weight:600}
-#backup-reminder-banner button{background:var(--amber);color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:.82rem;font-weight:700;cursor:pointer;white-space:nowrap}
-#backup-reminder-banner .brb-close{background:none;color:var(--amber);border:none;font-size:1rem;cursor:pointer;padding:0 4px}
 #sample-data-banner{display:none;align-items:center;justify-content:space-between;gap:12px;padding:10px 20px;background:#f5f3ff;color:#6d28d9;border-bottom:1px solid #ddd6fe;font-size:.87rem;font-weight:600}
 #sample-data-banner button{background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:6px 14px;font-size:.82rem;font-weight:700;cursor:pointer;white-space:nowrap}
 .step-dot{flex:1;height:4px;border-radius:2px;background:var(--border);transition:background .2s}
@@ -305,14 +302,6 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
       <button class="btn btn-destructive btn-sm" onclick="clearAll()">🗑 전체초기화</button>
     </div>
   </header>
-
-  <div id="backup-reminder-banner">
-    <span id="backup-reminder-text"></span>
-    <div class="flex-row">
-      <button onclick="switchTab('assign');document.getElementById('backup-reminder-banner').style.display='none'">📊 지금 엑셀로 백업</button>
-      <button class="brb-close" onclick="dismissBackupReminder()" title="닫기">✕</button>
-    </div>
-  </div>
 
   <div id="sample-data-banner">
     <span>🧪 샘플 데이터로 체험 중입니다 — 실제 학생 데이터가 아닙니다</span>
@@ -1235,10 +1224,10 @@ function clearSampleData(){
 function studentKey(s){return `${s.grade}-${s.cls}-${s.num}-${s.name}`;}
 function showExcelPreview(filename,errors){
   const titleEl=document.getElementById('upload-result-title');if(titleEl)titleEl.textContent='📋 업로드 결과';
-  const TAG_ICONS={'우수':'⭐','부진':'📉','지도':'⚠️','수급':'🔵','다문화':'🌏','도움':'🧩'};
+  const TAG_ICON_MAP={};allTagDefs().forEach(t=>{TAG_ICON_MAP[t.key]=t.icon;});
   const existingKeys=new Set(students.map(studentKey));
   dupStudentsCount=pendingExcelStudents.filter(s=>existingKeys.has(studentKey(s))).length;
-  document.getElementById('preview-summary').innerHTML=`<span style="color:var(--primary)">📄 ${filename}</span> → <strong>${pendingExcelStudents.length}명</strong>${errors?` <span style="color:var(--red)">(오류 ${errors}행)</span>`:''}`;
+  document.getElementById('preview-summary').innerHTML=`<span style="color:var(--primary)">📄 ${filename}</span> → <strong>${pendingExcelStudents.length}명</strong>${errors?` <span style="color:var(--red)" title="이름 없이 다른 값(성별·특성·메모 등)만 입력된 행입니다. 이름이 빠졌거나 잘못된 줄이 없는지 엑셀에서 확인해주세요.">(오류 ${errors}행 ⓘ)</span>`:''}`;
   const dupBox=document.getElementById('duplicate-warning');
   if(dupStudentsCount>0){
     dupBox.style.display='block';
@@ -1246,6 +1235,9 @@ function showExcelPreview(filename,errors){
       <label style="margin-right:12px"><input type="radio" name="dup-strategy" value="skip" checked> 건너뛰기(기존 유지)</label>
       <label style="margin-right:12px"><input type="radio" name="dup-strategy" value="overwrite"> 덮어쓰기(새 정보로 교체)</label>
       <label><input type="radio" name="dup-strategy" value="addall"> 모두 추가(중복 허용)</label>`;
+  }else if(errors){
+    dupBox.style.display='block';
+    dupBox.innerHTML=`⚠️ <b>${errors}개 행</b>에서 "이름"이 비어 있는데 다른 값(성별·특성·메모 등)은 입력되어 있습니다. 이름 입력을 빠뜨렸거나 번호를 착각했을 수 있으니 엑셀에서 확인해주세요. (해당 행은 이번 등록에서 제외됩니다)`;
   }else{
     dupBox.style.display='none';dupBox.innerHTML='';
   }
@@ -1254,7 +1246,7 @@ function showExcelPreview(filename,errors){
     const relParts=[];
     if(s._sepRaw)relParts.push(`<span style="color:var(--red)">🚫 ${s._sepRaw}</span>`);
     if(s._pairRaw)relParts.push(`<span style="color:var(--green)">🤝 ${s._pairRaw}</span>`);
-    return `<tr><td style="color:var(--text-sub)">${s.grade}-${s.cls}-${s.num||'?'}</td><td style="font-weight:600;color:${s.gender==='남'?'#1d4ed8':'#be185d'}">${s.name}</td><td>${s.gender}</td><td>${s.tags.map(t=>`<span>${TAG_ICONS[t]||t}</span>`).join(' ')}</td><td style="font-size:.78rem">${relParts.join(' ')}</td><td style="font-size:.78rem">${s.note}</td></tr>`;
+    return `<tr><td style="color:var(--text-sub)">${s.grade}-${s.cls}-${s.num||'?'}</td><td style="font-weight:600;color:${s.gender==='남'?'#1d4ed8':'#be185d'}">${s.name}</td><td>${s.gender}</td><td>${s.tags.map(t=>`<span>${TAG_ICON_MAP[t]||'🏷️'}</span>`).join(' ')}</td><td style="font-size:.78rem">${relParts.join(' ')}</td><td style="font-size:.78rem">${s.note}</td></tr>`;
   }).join('')}${pendingExcelStudents.length>30?`<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">... 외 ${pendingExcelStudents.length-30}명</td></tr>`:''}</tbody>`;
   document.getElementById('excel-preview').style.display='block';
   document.getElementById('upload-empty').style.display='none';
@@ -1782,11 +1774,12 @@ function studentCardHtml(s,inAssign=false){
   const TAG_SHORT={'우수':'우수','부진':'부진','지도':'지도','수급':'수급','다문화':'이주배경','도움':'도움'};
   const TAG_COLOR={'우수':'#854d0e','부진':'#991b1b','지도':'#5b21b6','수급':'#9a3412','다문화':'#075985','도움':'#14532d'};
   const TAG_BG={'우수':'#fef9c3','부진':'#fee2e2','지도':'#ede9fe','수급':'#ffedd5','다문화':'#e0f2fe','도움':'#dcfce7'};
+  const CUSTOM_LABEL_MAP={};allTagDefs().forEach(t=>{if(t.custom)CUSTOM_LABEL_MAP[t.key]=t.label;});
   // 5. 최대 2개 표시 + 나머지 +N
   const MAX_CHIPS=2;
   const shown=s.tags.slice(0,MAX_CHIPS);
   const extra=s.tags.length-MAX_CHIPS;
-  const tagChips=shown.map(t=>`<span style="font-size:.68rem;font-weight:700;padding:1px 5px;border-radius:4px;background:${TAG_BG[t]||'#f1f5f9'};color:${TAG_COLOR[t]||'#64748b'};white-space:nowrap">${TAG_SHORT[t]||t}</span>`).join('');
+  const tagChips=shown.map(t=>`<span style="font-size:.68rem;font-weight:700;padding:1px 5px;border-radius:4px;background:${TAG_BG[t]||'#f1f5f9'};color:${TAG_COLOR[t]||'#64748b'};white-space:nowrap">${TAG_SHORT[t]||CUSTOM_LABEL_MAP[t]||t}</span>`).join('');
   const extraChip=extra>0?`<span style="font-size:.68rem;font-weight:700;padding:1px 5px;border-radius:4px;background:#f1f5f9;color:#64748b">+${extra}</span>`:'';
   const hasReqRule=rules.some(r=>r.idA===s.id||r.idB===s.id);
   const dblclick=inAssign?`ondblclick="openEdit('${s.id}')"`:''
@@ -2031,7 +2024,6 @@ async function exportExcel(){
   const url=URL.createObjectURL(blob);const a=document.createElement('a');
   const d=new Date();const ds=`${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}`;
   a.href=url;a.download=`반편성결과_${ds}.xlsx`;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
-  lastExportAt=Date.now();checkBackupReminder();
   changesSinceExport=0;updateExportBadge();
   showToast('✅ 엑셀 파일 다운로드 완료');
 }
@@ -2080,7 +2072,6 @@ function updateBadges(){
   document.getElementById('badge-unassigned').textContent=total-assigned;
   // 상태 변경 시 자동 저장 (래핑 없이 직접 호출)
   saveSession();
-  checkBackupReminder();
   updateSampleBanner();
   renderRulesList();
   refreshTagCountBadges();
@@ -2157,28 +2148,6 @@ function restoreState(snap){
 }
 
 // ── 백업(엑셀 출력) 리마인더 ──
-let lastExportAt=null,backupSnoozeUntil=0;
-const BACKUP_STUDENT_THRESHOLD=10,BACKUP_INTERVAL_MS=10*60*1000;
-function dismissBackupReminder(){
-  document.getElementById('backup-reminder-banner').style.display='none';
-  backupSnoozeUntil=Date.now()+BACKUP_INTERVAL_MS;
-}
-function checkBackupReminder(){
-  const banner=document.getElementById('backup-reminder-banner');if(!banner)return;
-  const realCount=students.filter(s=>!s.isSample).length;
-  if(realCount<BACKUP_STUDENT_THRESHOLD||Date.now()<backupSnoozeUntil){banner.style.display='none';return;}
-  const elapsed=lastExportAt?Date.now()-lastExportAt:Infinity;
-  if(elapsed>BACKUP_INTERVAL_MS){
-    banner.style.display='flex';
-    document.getElementById('backup-reminder-text').textContent=lastExportAt
-      ?`⚠️ 마지막 엑셀 백업 후 ${Math.round(elapsed/60000)}분 경과 — 저장 기능이 없어 브라우저를 닫으면 데이터가 사라집니다.`
-      :`⚠️ 학생 ${realCount}명을 입력했지만 아직 엑셀로 백업하지 않았습니다. 브라우저를 닫으면 데이터가 사라집니다.`;
-  }else{
-    banner.style.display='none';
-  }
-}
-setInterval(checkBackupReminder,60*1000);
-
 let toastTimer;
 function showToast(msg,type){
   const ex=document.querySelector('.toast');if(ex)ex.remove();clearTimeout(toastTimer);

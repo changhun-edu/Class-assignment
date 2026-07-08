@@ -1778,8 +1778,18 @@ function autoAssign(onlyNew){
     });
   }
 
-  distributeBalanced(shuffle(pool.filter(s=>s.gender==='남')));
-  distributeBalanced(shuffle(pool.filter(s=>s.gender==='여')));
+  // 특수교육(도움) 최우선 배치: 성별 구분 없이 통합해서 가장 고르게 분산시킨 뒤, 나머지 학생만 기존 방식으로 배치
+  const helpPool=shuffle(pool.filter(s=>s.tags.includes('도움')));
+  const helpCount={};classes.forEach(c=>{helpCount[c.id]=(assignments[c.id]||[]).filter(id=>{const st=students.find(x=>x.id===id);return st&&st.tags.includes('도움');}).length;});
+  helpPool.forEach(s=>{
+    const tc=[...classes].sort((a,b)=>{const d=helpCount[a.id]-helpCount[b.id];return d!==0?d:classWeight(a.id)-classWeight(b.id);})[0];
+    assignments[tc.id]=assignments[tc.id]||[];assignments[tc.id].push(s.id);
+    helpCount[tc.id]++;
+  });
+  const remainingPool=pool.filter(s=>!s.tags.includes('도움'));
+
+  distributeBalanced(shuffle(remainingPool.filter(s=>s.gender==='남')));
+  distributeBalanced(shuffle(remainingPool.filter(s=>s.gender==='여')));
 
   rules.forEach(r=>{
     const sA=allPool.find(s=>s.id===r.idA),sB=allPool.find(s=>s.id===r.idB);if(!sA||!sB)return;

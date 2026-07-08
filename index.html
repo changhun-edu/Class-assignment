@@ -695,9 +695,15 @@ let dragStudentId=null;
 let doumWeight=2;
 let changesSinceExport=0;
 let isFinalized=false;
+function blockIfFinalized(){
+  if(isFinalized){
+    showToast('🔒 최종 확정된 상태입니다. 수정하려면 먼저 확정을 해제해주세요.','warn');
+    return true;
+  }
+  return false;
+}
 function markDirty(){
   changesSinceExport++;updateExportBadge();
-  if(isFinalized)showToast('⚠️ 최종 확정된 배정을 수정했습니다 — 확인 후 다시 확정해주세요','warn');
 }
 function toggleFinalize(){
   if(!isFinalized){
@@ -733,6 +739,7 @@ function updateExportBadge(){
 let tagTargets={'우수':3,'부진':3,'지도':3};
 function onTagTargetChange(key){
   const el=document.getElementById('opt-target-'+key);
+  if(blockIfFinalized()){el.value=tagTargets[key];return;}
   let v=+el.value;
   if(isNaN(v)||v<0)v=0;
   if(v>999)v=999;
@@ -844,6 +851,7 @@ function toggleEditTag(el,tag){
   else{editTags.add(tag);el.classList.add('on');}
 }
 function toggleSrcGrade(el,grade){
+  if(blockIfFinalized())return;
   selectedSrcGrades=new Set([grade]);
   document.querySelectorAll('#src-grade-pills .grade-pill').forEach(p=>{p.classList.toggle('active',p.dataset.grade===grade);});
   autoSetTargetGrade();
@@ -907,7 +915,7 @@ function renderTagEnableSettings(){
       statusHtml=`<span style="font-size:.75rem;color:var(--text-muted);white-space:nowrap">참고용 정보</span>`;
     }
     return`<label style="display:flex;align-items:center;gap:10px;padding:8px 12px;border:1px solid var(--border);border-radius:var(--r);background:${checked?'var(--primary-light)':'var(--surface2)'};cursor:pointer;${wideRow?'grid-column:span 2':''}">
-      <input type="checkbox" ${checked?'checked':''} onchange="toggleEnabledTag('${t.key}',this.checked)">
+      <input type="checkbox" ${checked?'checked':''} onchange="toggleEnabledTag('${t.key}',this.checked,this)">
       <span style="display:flex;align-items:center;gap:6px;font-weight:600;min-width:88px">${t.icon} ${t.label}</span>
       ${statusHtml}
       ${t.custom?`<span onclick="event.preventDefault();removeCustomTag('${t.key}')" title="특성 삭제" style="color:var(--text-muted);font-weight:700;cursor:pointer;padding:0 4px">×</span>`:''}
@@ -964,7 +972,8 @@ function updateTemplateVersionBanner(){
     b.textContent='✅ 현재 설정과 일치하는 서식입니다.';
   }
 }
-function toggleEnabledTag(key,checked){
+function toggleEnabledTag(key,checked,el){
+  if(blockIfFinalized()){if(el)el.checked=!checked;return;}
   const def=allTagDefs().find(t=>t.key===key);
   if(checked){enabledTags.add(key);}
   else{enabledTags.delete(key);activeTags.delete(key);editTags.delete(key);}
@@ -1009,6 +1018,7 @@ function quickFillCustomTag(name,icon,type){
   document.getElementById('ctag-name').focus();
 }
 function addCustomTag(){
+  if(blockIfFinalized())return;
   const name=document.getElementById('ctag-name').value.trim();
   if(!name){showToast('⚠️ 특성 이름을 입력해주세요','warn');return;}
   if(allTagDefs().some(t=>t.label===name)){showToast('⚠️ 이미 있는 특성 이름입니다','warn');return;}
@@ -1028,6 +1038,7 @@ function addCustomTag(){
   showToast(`✅ '${name}' 특성 추가 완료`);
 }
 function removeCustomTag(key){
+  if(blockIfFinalized())return;
   const def=customTagDefs.find(t=>t.key===key);if(!def)return;
   if(!confirm(`'${def.label}' 특성을 삭제하시겠습니까?\n이미 이 특성이 지정된 학생 데이터에서도 제거됩니다.`))return;
   const snapCustomTags=JSON.parse(JSON.stringify(customTagDefs));
@@ -1063,6 +1074,7 @@ function quickAssignStudentToClass(studentId){
   return true;
 }
 function addStudent(){
+  if(blockIfFinalized())return;
   const grade=document.getElementById('inp-grade').value;
   const cls=document.getElementById('inp-class').value;
   const num=document.getElementById('inp-num').value.trim();
@@ -1354,6 +1366,7 @@ function resolveRuleReferences(newStudents){
   return {recognized,warnings};
 }
 function confirmExcelImport(){
+  if(blockIfFinalized())return;
   const strategyEl=document.querySelector('input[name="dup-strategy"]:checked');
   const strategy=strategyEl?strategyEl.value:'addall';
   let toAdd=pendingExcelStudents;
@@ -1539,6 +1552,7 @@ async function downloadSampleExcel(){
 
 // ── 일괄 입력 ──
 function bulkImport(){
+  if(blockIfFinalized())return;
   const text=document.getElementById('bulk-input').value.trim();if(!text)return;
   if(!classes.length){showToast('⚠️ 먼저 ① 설정하기에서 반을 설정해주세요','warn');return;}
   const lines=text.split('\n').filter(l=>l.trim());let count=0,errors=0;
@@ -1588,6 +1602,7 @@ function renderStudentList(){
 }
 function filterStudents(){renderStudentList();}
 function deleteStudent(id){
+  if(blockIfFinalized())return;
   students=students.filter(s=>s.id!==id);unassigned=unassigned.filter(s=>s!==id);
   for(const cid in assignments)assignments[cid]=assignments[cid].filter(s=>s!==id);
   rules=rules.filter(r=>r.idA!==id&&r.idB!==id);
@@ -1612,6 +1627,7 @@ function openEdit(id){
 }
 function closeEditModal(){document.getElementById('edit-modal').style.display='none';editingId=null;editTags.clear();}
 function saveEdit(){
+  if(blockIfFinalized())return;
   const s=students.find(s=>s.id===editingId);if(!s)return;
   s.grade=+document.getElementById('edit-grade').value;s.cls=+document.getElementById('edit-class').value;
   s.num=+document.getElementById('edit-num').value||0;s.name=document.getElementById('edit-name').value.trim();
@@ -1639,6 +1655,7 @@ function clearSetupDirty(){
   if(card)card.classList.remove('setup-dirty');
 }
 function applySetup(){
+  if(blockIfFinalized())return;
   let n=+document.getElementById('setup-num-classes').value;
   if(isNaN(n)||n<1)n=1;
   if(n>MAX_CLASSES)n=MAX_CLASSES;
@@ -1705,6 +1722,7 @@ function updateUndoBtn(){
   btn.title=assignHistory.length?`되돌리기 (${assignHistory.length}단계 저장됨)`:'되돌릴 내용 없음';
 }
 function undoAssign(){
+  if(blockIfFinalized())return;
   if(!assignHistory.length)return;
   assignments=assignHistory.pop();
   updateUndoBtn();renderAssign();renderStatsIfActive();
@@ -1719,6 +1737,7 @@ function confirmFullReassign(){
   autoAssign(false);
 }
 function autoAssign(onlyNew){
+  if(blockIfFinalized())return;
   if(!classes.length){showToast('⚠️ 먼저 반 설정을 완료해주세요','warn');switchTab('setup');return;}
   const srcGrades=[...selectedSrcGrades].map(Number);
   const allPool=students.filter(s=>srcGrades.includes(s.grade));
@@ -1901,6 +1920,7 @@ function dragStart(e,id){dragStudentId=id;e.target.classList.add('dragging');e.d
 function dragEnd(e){e.target.classList.remove('dragging');}
 function dropStudent(e,targetId){
   e.preventDefault();if(!dragStudentId)return;
+  if(blockIfFinalized())return;
   saveSnapshot(); // ⑦ 드래그 이동 전 저장
   classes.forEach(c=>{assignments[c.id]=assignments[c.id].filter(id=>id!==dragStudentId);});
   if(targetId!=='unassigned'){if(!assignments[targetId])assignments[targetId]=[];assignments[targetId].push(dragStudentId);}
@@ -2085,41 +2105,54 @@ async function exportExcel(){
   const wb=new ExcelJS.Workbook();wb.creator='반편성 시뮬레이터';wb.created=new Date();
   const ws1=wb.addWorksheet('반별 명렬표');
   const TAG_BG={'우수':'FFFDE68A','부진':'FFFECACA','지도':'FFE9D5FF','수급':'FFFED7AA','다문화':'FFE0F2FE','도움':'FFD1FAE5'};
-  const headers=[];classes.forEach(c=>headers.push(c.name+' (이름)',c.name+' (특성)'));
+  const tagLabel=(t)=>{const def=allTagDefs().find(d=>d.key===t);return def?def.label:t;};
+  // 1) 반별 번호(새 학급 기준 순번) 열 추가
+  const headers=[];classes.forEach(c=>headers.push(c.name+' (번호)',c.name+' (이름)',c.name+' (특성)'));
   ws1.addRow(headers);ws1.getRow(1).eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'},size:11};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A5F'}};cell.alignment={horizontal:'center',vertical:'middle'};cell.border={bottom:{style:'thin'}};});
   const sorted={};classes.forEach(c=>{sorted[c.id]=(assignments[c.id]||[]).map(id=>students.find(st=>st.id===id)).filter(Boolean).sort((a,b)=>a.name.localeCompare(b.name,'ko'));});
   const maxRows=Math.max(...classes.map(c=>sorted[c.id].length));
   for(let r=0;r<maxRows;r++){
-    const row=[];classes.forEach(c=>{const s=sorted[c.id][r]||null;if(s){row.push(s.name);const noteFull=[s.note,getRuleNoteSuffix(s.id)].filter(Boolean).join(' ');row.push(s.tags.join(', ')+(noteFull?` [${noteFull}]`:''));}else{row.push('');row.push('');}});
+    const row=[];classes.forEach(c=>{const s=sorted[c.id][r]||null;if(s){row.push(r+1);row.push(s.name);const noteFull=[s.note,getRuleNoteSuffix(s.id)].filter(Boolean).join(' ');row.push(s.tags.map(tagLabel).join(', ')+(noteFull?` [${noteFull}]`:''));}else{row.push('');row.push('');row.push('');}});
     const wsRow=ws1.addRow(row);
     classes.forEach((c,ci)=>{
       const s=sorted[c.id][r]||null;if(!s)return;
-      const nc=wsRow.getCell(ci*2+1),tc=wsRow.getCell(ci*2+2);
+      const numC=wsRow.getCell(ci*3+1),nc=wsRow.getCell(ci*3+2),tc=wsRow.getCell(ci*3+3);
+      numC.alignment={horizontal:'center'};numC.font={color:{argb:'FF6B7280'},size:9};
       nc.font={color:{argb:s.gender==='남'?'FF1D4ED8':'FFBE185D'},bold:s.tags.includes('수급'),italic:s.tags.includes('다문화'),size:10};
       nc.alignment={horizontal:'center'};
       const ft=getBalanceTags().find(t=>s.tags.includes(t));
-      if(ft&&TAG_BG[ft])nc.fill={type:'pattern',pattern:'solid',fgColor:{argb:TAG_BG[ft]}};
+      if(ft)nc.fill={type:'pattern',pattern:'solid',fgColor:{argb:TAG_BG[ft]||'FFE0E7FF'}};
       tc.font={size:9,color:{argb:'FF6B7280'}};tc.alignment={horizontal:'left'};
-      [nc,tc].forEach(cell=>{cell.border={top:{style:'thin',color:{argb:'FFE5E7EB'}},bottom:{style:'thin',color:{argb:'FFE5E7EB'}},left:{style:'thin',color:{argb:'FFE5E7EB'}},right:{style:'thin',color:{argb:'FFE5E7EB'}}};});
+      [numC,nc,tc].forEach(cell=>{cell.border={top:{style:'thin',color:{argb:'FFE5E7EB'}},bottom:{style:'thin',color:{argb:'FFE5E7EB'}},left:{style:'thin',color:{argb:'FFE5E7EB'}},right:{style:'thin',color:{argb:'FFE5E7EB'}}};});
     });
     if(r%2===1)wsRow.eachCell(cell=>{if(!cell.fill?.fgColor?.argb||cell.fill.fgColor.argb==='FF000000')cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF8F9FB'}};});
   }
-  classes.forEach((_,i)=>{ws1.getColumn(i*2+1).width=12;ws1.getColumn(i*2+2).width=18;});ws1.getRow(1).height=24;
+  classes.forEach((_,i)=>{ws1.getColumn(i*3+1).width=8;ws1.getColumn(i*3+2).width=12;ws1.getColumn(i*3+3).width=18;});ws1.getRow(1).height=24;
 
-  const ws2=wb.addWorksheet('균형 통계');
-  ws2.addRow(['항목',...classes.map(c=>c.name),'편차']);ws2.getRow(1).eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A5F'}};cell.alignment={horizontal:'center'};});
-  const addSR=(label,vals)=>{const mx=Math.max(...vals),mn=Math.min(...vals);const row=ws2.addRow([label,...vals.map(v=>v+'명'),(mx-mn)+'']);row.getCell(1).font={bold:true};row.eachCell((cell,i)=>{cell.alignment={horizontal:'center'};cell.border={bottom:{style:'hair',color:{argb:'FFE5E7EB'}}};});ws2.getCell(row.number,classes.length+2).font={bold:true,color:{argb:(mx-mn)<=1?'FF16A34A':(mx-mn)<=2?'FFD97706':'FFEF4444'}};};
+  // 3) 균형 통계를 별도 시트가 아니라 반별 명렬표 아래쪽에 이어서 배치 (시트 1개로 통합)
+  let statRowNum=maxRows+3;
+  const statTitleRow=ws1.getRow(statRowNum);statTitleRow.getCell(1).value='⚖️ 균형 통계';statTitleRow.getCell(1).font={bold:true,size:12};
+  statRowNum++;
+  const statHeaderRow=ws1.getRow(statRowNum);
+  statHeaderRow.getCell(1).value='항목';classes.forEach((c,i)=>{statHeaderRow.getCell(i+2).value=c.name;});statHeaderRow.getCell(classes.length+2).value='편차';
+  statHeaderRow.eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A5F'}};cell.alignment={horizontal:'center'};});
+  statRowNum++;
+  const addSR=(label,vals)=>{
+    const mx=Math.max(...vals),mn=Math.min(...vals);
+    const row=ws1.getRow(statRowNum);
+    row.getCell(1).value=label;row.getCell(1).font={bold:true};
+    vals.forEach((v,i)=>{row.getCell(i+2).value=v+'명';row.getCell(i+2).alignment={horizontal:'center'};row.getCell(i+2).border={bottom:{style:'hair',color:{argb:'FFE5E7EB'}}};});
+    const devCell=row.getCell(classes.length+2);devCell.value=mx-mn;devCell.alignment={horizontal:'center'};devCell.font={bold:true,color:{argb:(mx-mn)<=1?'FF16A34A':(mx-mn)<=2?'FFD97706':'FFEF4444'}};
+    statRowNum++;
+  };
   addSR('전체 인원',classes.map(c=>(assignments[c.id]||[]).length));
   const wtVals=classes.map(c=>(assignments[c.id]||[]).reduce((acc,id)=>acc+(students.find(s=>s.id===id)?.tags.includes('도움')?doumWeight:1),0));
-  const wr=ws2.addRow([`가중치(도움×${doumWeight})`,...wtVals.map(v=>v+''),''+(Math.max(...wtVals)-Math.min(...wtVals))]);wr.getCell(1).font={bold:true};wr.eachCell((cell,i)=>{cell.alignment={horizontal:'center'};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFEDD5'}};cell.font={color:{argb:'FFC2410C'},bold:true};});
+  const wr=ws1.getRow(statRowNum);wr.getCell(1).value=`가중치(도움×${doumWeight})`;wr.getCell(1).font={bold:true};
+  wtVals.forEach((v,i)=>{const cell=wr.getCell(i+2);cell.value=v;cell.alignment={horizontal:'center'};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFEDD5'}};cell.font={color:{argb:'FFC2410C'},bold:true};});
+  wr.getCell(classes.length+2).value=Math.max(...wtVals)-Math.min(...wtVals);statRowNum++;
   addSR('남학생',classes.map(c=>(assignments[c.id]||[]).filter(id=>students.find(s=>s.id===id)?.gender==='남').length));
   addSR('여학생',classes.map(c=>(assignments[c.id]||[]).filter(id=>students.find(s=>s.id===id)?.gender==='여').length));
-  getBalanceTags().forEach(tag=>{const vals=classes.map(c=>(assignments[c.id]||[]).filter(id=>students.find(s=>s.id===id)?.tags.includes(tag)).length);if(vals.some(v=>v>0))addSR(tag,vals);});
-  ws2.columns.forEach((col,i)=>{col.width=i===0?16:12;});
-
-  const ws3=wb.addWorksheet('학생 원본');ws3.addRow(['학년','반','번호','이름','성별','특성','메모']);ws3.getRow(1).eachCell(cell=>{cell.font={bold:true};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF1F5F9'}};});
-  students.filter(s=>sg.includes(s.grade)).sort((a,b)=>a.cls-b.cls||a.num-b.num).forEach(s=>ws3.addRow([s.grade+'학년',s.cls+'반',s.num||'',s.name,s.gender,s.tags.join('/'),[s.note,getRuleNoteSuffix(s.id)].filter(Boolean).join(' ')]));
-  ws3.columns=[{width:8},{width:6},{width:6},{width:12},{width:6},{width:30},{width:30}];
+  getBalanceTags().forEach(tag=>{const vals=classes.map(c=>(assignments[c.id]||[]).filter(id=>students.find(s=>s.id===id)?.tags.includes(tag)).length);if(vals.some(v=>v>0))addSR(tagLabel(tag),vals);});
 
   const buf=await wb.xlsx.writeBuffer();
   const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
@@ -2131,9 +2164,9 @@ async function exportExcel(){
 }
 
 // ── 배정 규칙 ──
-function deleteRule(id){rules=rules.filter(r=>r.id!==id);renderRulesList();updateBadges();renderViolations();renderAssignIfActive();}
+function deleteRule(id){if(blockIfFinalized())return;rules=rules.filter(r=>r.id!==id);renderRulesList();updateBadges();renderViolations();renderAssignIfActive();}
 window.deleteRule=deleteRule;
-function clearRules(){if(!rules.length)return;if(!confirm('규칙 전체를 삭제하시겠습니까?'))return;const snapRules=JSON.parse(JSON.stringify(rules));rules=[];renderRulesList();updateBadges();renderAssignIfActive();showUndoToast('🗑 규칙 전체 삭제됨',()=>{rules=snapRules;renderRulesList();updateBadges();renderAssignIfActive();showToast('↩ 복구되었습니다');});}
+function clearRules(){if(blockIfFinalized())return;if(!rules.length)return;if(!confirm('규칙 전체를 삭제하시겠습니까?'))return;const snapRules=JSON.parse(JSON.stringify(rules));rules=[];renderRulesList();updateBadges();renderAssignIfActive();showUndoToast('🗑 규칙 전체 삭제됨',()=>{rules=snapRules;renderRulesList();updateBadges();renderAssignIfActive();showToast('↩ 복구되었습니다');});}
 window.clearRules=clearRules;
 function renderRulesList(){
   const c=document.getElementById('rules-list');if(!c)return;
@@ -2195,6 +2228,7 @@ function updateBadges(){
   }
 }
 function clearStudents(){
+  if(blockIfFinalized())return;
   if(!confirm('학생 전체를 삭제하시겠습니까?'))return;
   const snap=snapshotState();
   students=[];unassigned=[];classes.forEach(c=>{assignments[c.id]=[];});

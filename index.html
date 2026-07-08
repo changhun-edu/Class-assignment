@@ -303,11 +303,6 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
     </div>
   </header>
 
-  <div id="sample-data-banner">
-    <span>🧪 샘플 데이터로 체험 중입니다 — 실제 학생 데이터가 아닙니다</span>
-    <button onclick="clearSampleData()">🗑 샘플 삭제하고 실제 데이터 입력하기</button>
-  </div>
-
   <div class="tabs">
     <div class="tab active" onclick="switchTab('setup')" id="tab-setup">
       ① 설정 &amp; 서식받기
@@ -344,19 +339,6 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
           <div class="mt-12" style="font-size:.82rem;color:var(--text-sub);line-height:1.7">
             ② 서식받기 탭에서 받은 파일을 그대로 업로드하세요.<br>
             서식 없이 직접 만든 파일도 헤더명이 일치하면 인식됩니다.
-          </div>
-          <div class="mt-16" style="border-top:1px solid var(--border);padding-top:14px">
-            <button style="width:100%;background:#f5f3ff;color:#6d28d9;border:1px solid #ddd6fe;border-radius:var(--r);padding:9px 12px;font-size:.87rem;font-weight:700;cursor:pointer" onclick="toggleSampleDataForm()">🧪 샘플 학생으로 체험하기 (실제 데이터 아님)</button>
-            <div id="sample-data-form" style="display:none;margin-top:10px;border:1px dashed #ddd6fe;background:#faf9ff;border-radius:var(--r);padding:12px">
-              <div style="font-size:.8rem;color:#6d28d9;margin-bottom:10px;line-height:1.6">
-                🧪 엑셀 없이 현재 설정(사용 특성·선정 목표·반 수)을 그대로 반영한 임의의 학생 명단으로 전체 흐름을 체험합니다. 실제 데이터와 구분되도록 표시됩니다.
-              </div>
-              <div class="flex-row">
-                <button class="btn btn-sm" style="background:#7c3aed;color:#fff" onclick="generateSampleData(20)">20명</button>
-                <button class="btn btn-sm" style="background:#7c3aed;color:#fff" onclick="generateSampleData(40)">40명</button>
-                <button class="btn btn-sm" style="background:#7c3aed;color:#fff" onclick="generateSampleData(60)">60명</button>
-              </div>
-            </div>
           </div>
         </div>
         <div class="card">
@@ -401,7 +383,7 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
       <div class="card" id="setup-card" style="max-width:680px">
         <div class="card-title">⚙️ 편성할 학년 및 반 수 설정</div>
         <div class="mt-12">
-          <label>① 기준 학년 (현재 학년) — 배정 대상 학생들의 현재 학년</label>
+          <label>① 기준 학년 (<b style="color:var(--primary)">현재 학년</b>)</label>
           <div class="flex-row mt-4" id="src-grade-pills">
             <span class="pill pill-interactive grade-pill active" onclick="toggleSrcGrade(this,'5')" data-grade="5">5학년</span>
             <span class="pill pill-interactive grade-pill" onclick="toggleSrcGrade(this,'4')" data-grade="4">4학년</span>
@@ -1239,74 +1221,6 @@ function handleExcelFile(file){
   };
   reader.readAsArrayBuffer(file);
 }
-// ── 샘플 데이터 체험 ──
-const SAMPLE_SURNAMES=['김','이','박','최','정','강','조','윤','장','임','한','오','서','신','권','황','안','송','류','전'];
-const SAMPLE_GIVEN_M=['민준','서준','도윤','예준','시우','주원','하준','지호','지후','준서','건우','현우','도현','지훈','우진','선우','연우','정우','승우','유준'];
-const SAMPLE_GIVEN_F=['서연','서윤','지우','서현','하은','하윤','민서','지민','윤서','지유','채원','수아','다은','예은','소율','지아','예린','다인','시은','유나'];
-function toggleSampleDataForm(){
-  const el=document.getElementById('sample-data-form');
-  el.style.display=el.style.display==='none'?'block':'none';
-}
-function hideSampleDataForm(){document.getElementById('sample-data-form').style.display='none';}
-function shuffleArr(arr){const a=[...arr];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
-function generateSampleData(n){
-  hideSampleDataForm();
-  const used=new Set();
-  function uniqueName(gender){
-    let name;let tries=0;
-    do{
-      const g=SAMPLE_SURNAMES[Math.floor(Math.random()*SAMPLE_SURNAMES.length)];
-      const pool=gender==='남'?SAMPLE_GIVEN_M:SAMPLE_GIVEN_F;
-      name=g+pool[Math.floor(Math.random()*pool.length)];
-      tries++;
-    }while(used.has(name)&&tries<50);
-    used.add(name);return name;
-  }
-  const srcGrade=+([...selectedSrcGrades][0]||5);
-  const numPrevClasses=Math.max(1,Math.ceil(n/25));
-  const perClassCounters={};
-  const newStudents=[];
-  for(let i=0;i<n;i++){
-    const cls=(i%numPrevClasses)+1;
-    perClassCounters[cls]=(perClassCounters[cls]||0)+1;
-    const gender=i%2===0?'남':'여';
-    newStudents.push({id:uid(),grade:srcGrade,cls,num:perClassCounters[cls],name:uniqueName(gender),gender,tags:[],note:'',isSample:true});
-  }
-  // 균형 대상 특성: 설정된 "선정 목표" 인원에 최대한 맞춰 생성
-  BALANCE_TAGS.filter(t=>t!=='도움'&&enabledTags.has(t)).forEach(tagKey=>{
-    const target=Math.min(n,tagTargets[tagKey]!==undefined?tagTargets[tagKey]:3);
-    shuffleArr(newStudents).slice(0,target).forEach(s=>s.tags.push(tagKey));
-  });
-  if(enabledTags.has('도움')){
-    const doumCount=Math.max(1,Math.round(n*0.08));
-    shuffleArr(newStudents).slice(0,doumCount).forEach(s=>s.tags.push('도움'));
-  }
-  customTagDefs.filter(t=>enabledTags.has(t.key)&&t.balance).forEach(t=>{
-    shuffleArr(newStudents).slice(0,Math.min(3,n)).forEach(s=>s.tags.push(t.key));
-  });
-  pendingExcelStudents=newStudents;
-  if(n>=4){
-    newStudents[0]._sepRaw=`${newStudents[1].cls}-${newStudents[1].num} ${newStudents[1].name}`;
-  }
-  showExcelPreview(`🧪 샘플 데이터 (${n}명)`,0);
-  showToast(`🧪 샘플 학생 ${n}명 생성 — 미리보기를 확인하고 등록하세요`);
-}
-function anySampleData(){return students.some(s=>s.isSample);}
-function updateSampleBanner(){
-  const b=document.getElementById('sample-data-banner');if(!b)return;
-  b.style.display=anySampleData()?'flex':'none';
-}
-function clearSampleData(){
-  if(!confirm('샘플 데이터를 모두 삭제하시겠습니까? (설정은 유지됩니다)'))return;
-  const sampleIds=new Set(students.filter(s=>s.isSample).map(s=>s.id));
-  students=students.filter(s=>!s.isSample);
-  unassigned=unassigned.filter(id=>!sampleIds.has(id));
-  classes.forEach(c=>{assignments[c.id]=(assignments[c.id]||[]).filter(id=>!sampleIds.has(id));});
-  rules=rules.filter(r=>!(sampleIds.has(r.idA)&&sampleIds.has(r.idB)));
-  renderStudentList();renderAssignIfActive();updateBadges();
-  showToast('🗑 샘플 데이터 삭제 완료');
-}
-
 function studentKey(s){return `${s.grade}-${s.cls}-${s.num}-${s.name}`;}
 function showExcelPreview(filename,errors){
   const titleEl=document.getElementById('upload-result-title');if(titleEl)titleEl.textContent='📋 업로드 결과';
@@ -1839,10 +1753,42 @@ function autoAssign(onlyNew){
     const clsB=classes.find(c=>assignments[c.id].includes(r.idB));if(!clsA||!clsB)return;
     if(r.type==='분리'&&clsA.id===clsB.id){
       const t=[...classes].filter(c=>c.id!==clsA.id).sort((a,b)=>classWeight(a.id)-classWeight(b.id))[0];
-      if(t){assignments[clsA.id]=assignments[clsA.id].filter(id=>id!==r.idB);assignments[t.id].push(r.idB);}
+      if(t){
+        assignments[clsA.id]=assignments[clsA.id].filter(id=>id!==r.idB);assignments[t.id].push(r.idB);
+        // 인원수 유지를 위해 t반에서 규칙에 안 걸린 학생 1명을 clsA로 맞바꿈
+        const swapPool=(assignments[t.id]||[]).map(id=>students.find(s=>s.id===id)).filter(s=>s&&s.id!==r.idB&&!rules.some(rr=>rr.idA===s.id||rr.idB===s.id));
+        const swapBack=swapPool.find(s=>s.gender===sB.gender)||swapPool[0];
+        if(swapBack){assignments[t.id]=assignments[t.id].filter(id=>id!==swapBack.id);assignments[clsA.id].push(swapBack.id);}
+      }
     }
-    if(r.type==='동반'&&clsA.id!==clsB.id){assignments[clsB.id]=assignments[clsB.id].filter(id=>id!==r.idB);assignments[clsA.id].push(r.idB);}
+    if(r.type==='동반'&&clsA.id!==clsB.id){
+      assignments[clsB.id]=assignments[clsB.id].filter(id=>id!==r.idB);assignments[clsA.id].push(r.idB);
+      // 인원수 유지를 위해 clsA에서 규칙에 안 걸린 학생 1명을 clsB로 맞바꿈
+      const swapPool=(assignments[clsA.id]||[]).map(id=>students.find(s=>s.id===id)).filter(s=>s&&s.id!==r.idB&&!rules.some(rr=>rr.idA===s.id||rr.idB===s.id));
+      const swapBack=swapPool.find(s=>s.gender===sB.gender)||swapPool[0];
+      if(swapBack){assignments[clsA.id]=assignments[clsA.id].filter(id=>id!==swapBack.id);assignments[clsB.id].push(swapBack.id);}
+    }
   });
+
+  // 안전망: 규칙 적용으로 다시 어긋났을 수 있는 전체 인원을 한 번 더 점검(규칙 걸린 학생은 건드리지 않음)
+  (function finalRawCountCheck(){
+    const maxIter=pool.length+5;
+    for(let iter=0;iter<maxIter;iter++){
+      const counts=classes.map(c=>({c,n:(assignments[c.id]||[]).length}));
+      const most=counts.reduce((a,b)=>b.n>a.n?b:a);
+      const least=counts.reduce((a,b)=>b.n<a.n?b:a);
+      if(most.n-least.n<=1||most.c.id===least.c.id)break;
+      const candidates=(assignments[most.c.id]||[])
+        .map(id=>students.find(s=>s.id===id))
+        .filter(s=>s&&!rules.some(r=>r.idA===s.id||r.idB===s.id));
+      if(!candidates.length)break;
+      candidates.sort((a,b)=>a.tags.length-b.tags.length);
+      const moveStudent=candidates[0];
+      assignments[most.c.id]=assignments[most.c.id].filter(id=>id!==moveStudent.id);
+      assignments[least.c.id]=assignments[least.c.id]||[];
+      assignments[least.c.id].push(moveStudent.id);
+    }
+  })();
 
   unassigned=allPool.filter(s=>!isAssigned(s)).map(s=>s.id);
   updateBadges();switchTab('assign');renderAssign();renderStatsIfActive();renderStudentPanelIfActive();
@@ -2013,7 +1959,6 @@ function clearSearchAssign(){
 // ── 인쇄 ──
 function printAssign(){
   if(!classes.length){showToast('⚠️ 배정 데이터가 없습니다','warn');return;}
-  if(anySampleData()&&!confirm('⚠️ 샘플 데이터가 포함되어 있습니다. 그대로 인쇄하시겠습니까?'))return;
   const sg=[...selectedSrcGrades].map(Number);
   const printCols=Math.min(classes.length,5);
   let html=`<html><head><meta charset="UTF-8"><title>반편성 결과</title><style>
@@ -2144,7 +2089,6 @@ function getRuleNoteSuffix(studentId){
 // ── 엑셀 출력 ──
 async function exportExcel(){
   if(!classes.length||!students.length){showToast('⚠️ 배정 데이터가 없습니다','warn');return;}
-  if(anySampleData()&&!confirm('⚠️ 샘플 데이터가 포함되어 있습니다. 그대로 출력하시겠습니까?'))return;
   // ⑥ 미배정 학생 경고
   const sg=[...selectedSrcGrades].map(Number);
   const total=students.filter(s=>sg.includes(s.grade)).length;
@@ -2265,7 +2209,6 @@ function updateBadges(){
   document.getElementById('badge-unassigned').textContent=total-assigned;
   // 상태 변경 시 자동 저장 (래핑 없이 직접 호출)
   saveSession();
-  updateSampleBanner();
   renderRulesList();
   refreshTagCountBadges();
   const rulesSummary=document.getElementById('rules-summary');
@@ -2294,17 +2237,71 @@ function clearStudents(){
   markDirty();
   showUndoToast('🗑 학생 전체 삭제됨',()=>restoreState(snap));
 }
+function resetAppState(){
+  // 전역 상태를 초기값으로 되돌림 (새로고침과 동일한 효과, 실제 새로고침 없이)
+  students=[];classes=[];assignments={};unassigned=[];rules=[];
+  settingsVersionId=null;lastDownloadedVersionId=null;lastUploadedVersionId=null;
+  dupStudentsCount=0;
+  editingId=null;activeTags=new Set();editTags=new Set();
+  selectedSrcGrades=new Set(['5']);
+  dragStudentId=null;
+  doumWeight=2;
+  changesSinceExport=0;
+  isFinalized=false;
+  tagTargets={'우수':3,'부진':3,'지도':3};
+  pendingExcelStudents=[];
+  assignHistory=[];
+  enabledTags=new Set(TAG_DEFS.map(t=>t.key));
+  customTagDefs=[];
+  assignScrollTop=0;
+  ctagType='select';
+  setupDirty=false;
+  tourStep=0;
+
+  // 열려있는 모달/드로어 닫기
+  ['edit-modal','tour-modal','info-modal'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display='none';});
+  const sideStats=document.getElementById('side-stats-panel');if(sideStats)sideStats.style.display='none';
+  const sideStudent=document.getElementById('side-student-panel');if(sideStudent)sideStudent.style.display='none';
+
+  // 입력 폼 값 초기화
+  const numClsEl=document.getElementById('setup-num-classes');if(numClsEl)numClsEl.value=4;
+  document.querySelectorAll('#src-grade-pills .grade-pill').forEach(p=>{p.classList.toggle('active',p.dataset.grade==='5');});
+  autoSetTargetGrade();
+  const bulkEl=document.getElementById('bulk-input');if(bulkEl)bulkEl.value='';
+  const fileEl=document.getElementById('excel-file-input');if(fileEl)fileEl.value='';
+
+  // 배너/미리보기 화면 초기화
+  const sampleBanner=document.getElementById('sample-data-banner');if(sampleBanner)sampleBanner.style.display='none';
+  const dirtyHint=document.getElementById('setup-dirty-hint');if(dirtyHint)dirtyHint.style.display='none';
+  const templateBanner=document.getElementById('template-version-banner');if(templateBanner)templateBanner.style.display='none';
+  const uploadBanner=document.getElementById('upload-version-banner');if(uploadBanner)uploadBanner.style.display='none';
+  const excelPreview=document.getElementById('excel-preview');if(excelPreview)excelPreview.style.display='none';
+  const uploadEmpty=document.getElementById('upload-empty');if(uploadEmpty)uploadEmpty.style.display='block';
+  const dropzone=document.getElementById('excel-dropzone');if(dropzone)dropzone.style.display='block';
+  const uploadBtn=document.querySelector('#excel-dropzone + button');if(uploadBtn)uploadBtn.style.display='block';
+  const postImport=document.getElementById('post-import-actions');if(postImport)postImport.style.display='none';
+
+  // 화면 다시 그리기 (초기 로드와 동일한 순서)
+  renderClassNameInputs();
+  renderTagSelectors();renderTagEnableSettings();updateFormatGuideText();
+  refreshSettingsVersion();
+  renderStudentList();updateBadges();
+  renderRulesList();
+  updateExportBadge();
+  updateFinalizeUI();
+
+  switchTab('setup');
+  const tagCard=document.getElementById('tag-settings-card');
+  if(tagCard){tagCard.classList.add('attn-pulse');setTimeout(()=>tagCard.classList.remove('attn-pulse'),3200);}
+  showToast('✅ 전체 초기화 완료');
+}
 function clearAll(){
   const msg=students.length
-    ? `학생 ${students.length}명을 포함한 모든 데이터가 삭제됩니다.\n초기화하시겠습니까? (초기화 직후 5초간 되돌리기 가능)`
+    ? `학생 ${students.length}명을 포함한 모든 데이터가 삭제됩니다.\n초기화하시겠습니까? (되돌릴 수 없습니다)`
     : '모든 데이터를 초기화하시겠습니까?';
   if(!confirm(msg))return;
-  const snap=snapshotState();
-  students=[];unassigned=[];classes=[];assignments={};rules=[];
-  assignHistory=[];
   sessionStorage.removeItem(SESSION_KEY);
-  renderStudentList();renderRulesList();updateBadges();
-  showUndoToast('🗑 전체 초기화 완료',()=>restoreState(snap));
+  resetAppState();
 }
 // ── 실행취소 토스트 (파괴적 작업용) ──
 let undoToastTimer=null,pendingUndo=null;
@@ -2418,7 +2415,7 @@ const restored=loadSession();
 const TOUR_STEPS=[
   {title:'👋 스마트 반편성에 오신 것을 환영합니다',desc:'전체 흐름은 3단계입니다: <b>① 설정 &amp; 서식받기 → ② 엑셀업로드 → ③ 배정 작업</b>. 각 단계를 간단히 안내해드릴게요.'},
   {title:'① 설정 & 서식받기',desc:'기준 학년·반 수·반 이름을 정하고, 사용할 학생 특성(학습우수, 생활도움 등)과 분리·동반 규칙을 설정합니다. 같은 화면에서 바로 설정이 반영된 엑셀 서식을 내려받아 학생 명단과 특성을 입력하세요. 학년·반·번호는 <b>전년도 기준</b>입니다.'},
-  {title:'② 엑셀업로드',desc:'작성한 파일을 올리면 내용을 확인 후 등록됩니다. 최초 등록이면 자동으로 균형 배치까지 실행됩니다. 엑셀 없이 <b>🧪 샘플 데이터</b>로 먼저 체험해볼 수도 있습니다.'},
+  {title:'② 엑셀업로드',desc:'작성한 파일을 올리면 내용을 확인 후 등록됩니다. 최초 등록이면 자동으로 균형 배치까지 실행됩니다.'},
   {title:'③ 배정 작업',desc:'학생 카드를 드래그해서 반을 옮기거나 더블클릭으로 정보를 수정할 수 있습니다. "⚖️ 통계"·"👤 학생 관리"로 세부 내용을 확인하고, 마지막엔 "✅ 최종 확정" 후 "📊 엑셀 출력"으로 마무리하세요.'}
 ];
 let tourStep=0;

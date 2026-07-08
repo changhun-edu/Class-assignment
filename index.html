@@ -155,7 +155,7 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
 .cs-pill{font-size:.7rem;font-weight:700;padding:2px 6px;border-radius:8px;background:rgba(255,255,255,.22);color:#fff}
 
 /* 1열 고정 → 반 수가 많아도 카드 가독성 확보 */
-.class-students{padding:5px;overflow-y:auto;flex:1;display:grid;grid-template-columns:1fr;gap:3px;align-content:start}
+.class-students{padding:5px;overflow-y:auto;flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:3px;align-content:start}
 
 .student-card{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:5px 8px;cursor:grab;display:flex;align-items:center;gap:5px;transition:all .12s;user-select:none;min-width:0}
 .student-card:hover{box-shadow:var(--shadow-md);border-color:var(--primary);transform:translateY(-1px)}
@@ -674,6 +674,13 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
         <button class="btn btn-primary btn-sm" onclick="tourNext()" id="tour-next-btn">다음</button>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="info-modal" style="display:none" onclick="if(event.target===this)closeStudentInfo()">
+  <div class="modal" style="max-width:400px">
+    <div class="modal-title">👤 학생 정보<span class="modal-close" onclick="closeStudentInfo()">✕</span></div>
+    <div id="info-modal-body" style="font-size:.88rem;line-height:1.6"></div>
   </div>
 </div>
 
@@ -1568,7 +1575,7 @@ function renderStudentList(){
     <td style="color:var(--text-sub);white-space:nowrap">${s.grade}-${s.cls}-${s.num||'?'}</td>
     <td class="name-col ${s.gender==='남'?'gender-m':'gender-f'}">${s.name}${s.tags.includes('수급')?' <b style="font-size:.78rem">(수급)</b>':''}${s.tags.includes('다문화')?' <i style="font-size:.78rem">(이주배경)</i>':''}</td>
     <td><span style="color:${s.gender==='남'?'#1d4ed8':'#be185d'}">${s.gender}</span></td>
-    <td>${s.tags.map(t=>`<span class="tag-mini" style="background:${TAG_COLORS[t]?.bg};color:${TAG_COLORS[t]?.color}">${t}</span>`).join('')}</td>
+    <td>${s.tags.map(t=>{const def=allTagDefs().find(d=>d.key===t);const label=def?def.label:t;return `<span class="tag-mini" style="background:${TAG_COLORS[t]?.bg};color:${TAG_COLORS[t]?.color}">${label}</span>`;}).join('')}</td>
     <td>${s.note?`<span class="note-badge" title="${s.note}">${s.note}</span>`:''}</td>
     <td><div class="row-actions"><button class="btn btn-secondary btn-sm" onclick="openEdit('${s.id}')">수정</button><button class="btn btn-danger btn-sm" onclick="deleteStudent('${s.id}')">삭제</button></div></td>
   </tr>`).join('');
@@ -1809,7 +1816,7 @@ function renderAssign(){
           <span class="cs-pill">${clsStudents.length}명${hasDoum?`(${wt})`:''}</span>
         </div>
       </div>
-      <div class="class-students">${clsStudents.map(s=>studentCardHtml(s,true)).join('')}</div>
+      <div class="class-students">${clsStudents.map((s,idx)=>studentCardHtml(s,true,idx)).join('')}</div>
     </div>`;
   });
   html+=`</div>`;
@@ -1836,7 +1843,7 @@ function renderAssign(){
   container.innerHTML=html;updateBadges();
 }
 
-function studentCardHtml(s,inAssign=false){
+function studentCardHtml(s,inAssign=false,idx=null){
   const bc=s.tags.includes('우수')?'has-우수':s.tags.includes('부진')?'has-부진':s.tags.includes('지도')?'has-지도':s.tags.includes('도움')?'has-도움':'';
   const TAG_SHORT={'우수':'우수','부진':'부진','지도':'지도','수급':'수급','다문화':'이주배경','도움':'도움'};
   const TAG_COLOR={'우수':'#854d0e','부진':'#991b1b','지도':'#5b21b6','수급':'#9a3412','다문화':'#075985','도움':'#14532d'};
@@ -1850,13 +1857,14 @@ function studentCardHtml(s,inAssign=false){
   const extraChip=extra>0?`<span style="font-size:.68rem;font-weight:700;padding:1px 5px;border-radius:4px;background:#f1f5f9;color:#64748b">+${extra}</span>`:'';
   const hasReqRule=rules.some(r=>r.idA===s.id||r.idB===s.id);
   const dblclick=inAssign?`ondblclick="openEdit('${s.id}')"`:''
+  const numPrefix=(inAssign&&idx!==null)?`<span style="color:var(--text-muted);font-weight:700;margin-right:2px">${idx+1}.</span>`:'';
   return`<div class="student-card ${bc}" draggable="true"
     ondragstart="dragStart(event,'${s.id}')" ondragend="dragEnd(event)"
     ${dblclick}
     title="${s.grade}-${s.cls}-${s.num} ${s.name} (${s.gender})${s.tags.length?' ['+s.tags.join(',')+']':''}${s.note?'\n'+s.note:''}${hasReqRule?'\n🔗 배정 필수 조건 있음':''}">
     <div style="min-width:0;flex:1">
       <div style="display:flex;align-items:center;gap:4px">
-        <span class="sname ${s.gender==='남'?'gender-m':'gender-f'}">${s.name}</span>
+        <span class="sname ${s.gender==='남'?'gender-m':'gender-f'}" style="cursor:pointer" onclick="event.stopPropagation();showStudentInfo('${s.id}')">${numPrefix}${s.name}</span>
         ${hasReqRule?`<span style="font-size:.75rem" title="배정 필수 조건(분리/동반)이 등록된 학생입니다">🔗</span>`:''}
       </div>
       <div class="sinfo">${s.grade}-${s.cls}-${s.num}</div>
@@ -1864,6 +1872,30 @@ function studentCardHtml(s,inAssign=false){
     <div class="stags">${tagChips}${extraChip}</div>
   </div>`;
 }
+function showStudentInfo(id){
+  const s=students.find(x=>x.id===id);if(!s)return;
+  const cls=classes.find(c=>(assignments[c.id]||[]).includes(id));
+  const myRules=rules.filter(r=>r.idA===id||r.idB===id);
+  const ruleLines=myRules.map(r=>{
+    const otherId=r.idA===id?r.idB:r.idA;
+    const other=students.find(x=>x.id===otherId);
+    const otherName=other?other.name:'(삭제된 학생)';
+    const otherCls=other?classes.find(c=>(assignments[c.id]||[]).includes(other.id)):null;
+    return r.type==='분리'
+      ?`🚫 <b>${otherName}</b>${otherCls?`(${otherCls.name})`:''}와 분리`
+      :`🤝 <b>${otherName}</b>${otherCls?`(${otherCls.name})`:''}와 동반`;
+  });
+  const tagLabels=s.tags.map(t=>{const def=allTagDefs().find(d=>d.key===t);return def?`${def.icon} ${def.label}`:t;});
+  const html=`
+    <div style="margin-bottom:10px"><b style="font-size:1.05rem">${s.name}</b> <span style="color:var(--text-sub);font-size:.85rem">(${s.grade}-${s.cls}-${s.num}, ${s.gender}) ${cls?`→ 현재 <b>${cls.name}</b>`:''}</span></div>
+    <div style="margin-bottom:10px"><label style="font-size:.8rem;color:var(--text-muted)">특성</label><div style="margin-top:4px">${tagLabels.length?tagLabels.join(', '):'<span style="color:var(--text-muted)">없음</span>'}</div></div>
+    <div style="margin-bottom:10px"><label style="font-size:.8rem;color:var(--text-muted)">분리·동반 규칙</label><div style="margin-top:4px">${ruleLines.length?ruleLines.join('<br>'):'<span style="color:var(--text-muted)">없음</span>'}</div></div>
+    <div><label style="font-size:.8rem;color:var(--text-muted)">메모</label><div style="margin-top:4px">${s.note?s.note:'<span style="color:var(--text-muted)">없음</span>'}</div></div>
+  `;
+  document.getElementById('info-modal-body').innerHTML=html;
+  document.getElementById('info-modal').style.display='flex';
+}
+function closeStudentInfo(){document.getElementById('info-modal').style.display='none';}
 
 function dragStart(e,id){dragStudentId=id;e.target.classList.add('dragging');e.dataTransfer.effectAllowed='move';}
 function dragEnd(e){e.target.classList.remove('dragging');}
@@ -1940,7 +1972,7 @@ function printAssign(){
     html+=`<div class="cls"><div class="hdr"><span>${cls.name}</span><span>남${males} 여${females} 계${clsStudents.length}</span></div><table>`;
     clsStudents.forEach((s,i)=>{
       const tags=s.tags.filter(t=>getBalanceTags().includes(t));
-      html+=`<tr><td class="${s.gender==='여'?'f':''}">${i+1}</td><td>${s.name}${tags.map(t=>`<span class="tag ${t}">${t}</span>`).join('')}</td></tr>`;
+      html+=`<tr><td class="${s.gender==='여'?'f':''}">${i+1}</td><td>${s.name}${tags.map(t=>{const def=allTagDefs().find(d=>d.key===t);const label=def?def.label:t;return `<span class="tag ${t}">${label}</span>`;}).join('')}</td></tr>`;
     });
     html+=`</table></div>`;
   });
@@ -2016,10 +2048,13 @@ function renderStats(){
   });
   TLABELS.forEach(tag=>{
     const icons={'우수':'⭐','부진':'📉','지도':'⚠️','수급':'🟠','다문화':'🌏','도움':'🧩'};
+    const def=allTagDefs().find(t=>t.key===tag);
+    const displayIcon=icons[tag]||(def?def.icon:'');
+    const displayLabel=def?def.label:tag;
     const vals=classes.map(cls=>(assignments[cls.id]||[]).filter(id=>students.find(s=>s.id===id)?.tags.includes(tag)).length);
     if(vals.every(v=>v===0))return;
     const mx=Math.max(...vals),mn=Math.min(...vals);
-    html+=`<tr><td>${icons[tag]||''} ${tag}</td>${vals.map(v=>`<td>${v}명</td>`).join('')}<td class="${mx-mn<=1?'balance-ok':mx-mn<=2?'balance-warn':'balance-bad'}">${mx-mn}</td></tr>`;
+    html+=`<tr><td>${displayIcon} ${displayLabel}</td>${vals.map(v=>`<td>${v}명</td>`).join('')}<td class="${mx-mn<=1?'balance-ok':mx-mn<=2?'balance-warn':'balance-bad'}">${mx-mn}</td></tr>`;
   });
   html+=`</tbody></table></div></div>`;
   c.innerHTML=html;

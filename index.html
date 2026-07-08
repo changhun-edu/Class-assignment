@@ -1347,9 +1347,15 @@ async function downloadSampleExcel(){
   const headerLabel=(t)=>tagTargets.hasOwnProperty(t.key)?`${t.excelHeader}\n(${tagTargets[t.key]}명 선정)`:t.excelHeader;
   const headers=['학년','반','번호','이름','성별','상태',...activeDefs.map(headerLabel),'분리대상','동반대상','메모'];
   const MAX_NUM=30;
-  // 최종 출력물과 동일한 특성별 색상 (일관성 유지)
+  // 최종 출력물과 동일한 특성별 색상 (일관성 유지) + 사용자 정의 특성은 팔레트에서 순서대로 고유색 배정
   const TAG_BG={'우수':'FFFDE68A','부진':'FFFECACA','지도':'FFE9D5FF','수급':'FFFED7AA','다문화':'FFE0F2FE','도움':'FFD1FAE5'};
-  const FALLBACK_BG='FFE0E7FF';
+  const CUSTOM_PALETTE=['FFFBCFE8','FFA5F3FC','FFC4B5FD','FFBEF264','FFFDBA74','FF5EEAD4','FFF9A8D4','FF93C5FD'];
+  const tagColorMap={};
+  let customColorIdx=0;
+  activeDefs.forEach(t=>{
+    if(TAG_BG[t.key]){tagColorMap[t.key]=TAG_BG[t.key];}
+    else{tagColorMap[t.key]=CUSTOM_PALETTE[customColorIdx%CUSTOM_PALETTE.length];customColorIdx++;}
+  });
   const colLetter=(n)=>{let s='';while(n>0){const m=(n-1)%26;s=String.fromCharCode(65+m)+s;n=Math.floor((n-1)/26);}return s;};
   const firstDataRow=3,lastDataRow=3+MAX_NUM-1;
   const nameColLetter=colLetter(4);
@@ -1359,7 +1365,7 @@ async function downloadSampleExcel(){
 
   for(let sheetIdx=1;sheetIdx<=numSheets;sheetIdx++){
     const ws=wb.addWorksheet(`${sheetIdx}반`);
-    const noteRow=ws.addRow([`※ 학년/반/번호는 전년도(현재) 기준입니다. 새 학년도 반 배정 결과가 아닙니다.\n분리·동반 대상은 반드시 같은 학년(${srcGrade}학년) 안에서만 "반-번호 이름" 형식으로 입력하세요 (예: 2-15 박영희 = ${srcGrade}학년 2반 15번 박영희). 특성 해당 학생은 ○로 표시하세요. 학기 중 전학 간 학생은 "상태"를 전학으로 바꾸면 반배정 대상에서 자동 제외됩니다.`]);
+    const noteRow=ws.addRow([`※ 학년/반/번호는 전년도(현재) 기준입니다. 새 학년도 반 배정 결과가 아닙니다.\n분리·동반 대상은 반드시 같은 학년(${srcGrade}학년) 안에서만 "반-번호 이름" 형식으로 입력하세요. (예: 2-15 박영희 → 2반 15번 박영희) 특성 해당 학생은 ○로 표시하세요. 학기 중 전학 간 학생은 "상태"를 전학으로 바꾸면 반배정 대상에서 자동 제외됩니다.`]);
     ws.mergeCells(1,1,1,headers.length);
     noteRow.getCell(1).font={italic:true,bold:true,color:{argb:'FF9A3412'}};
     noteRow.getCell(1).alignment={horizontal:'left',vertical:'middle',wrapText:true};
@@ -1371,7 +1377,7 @@ async function downloadSampleExcel(){
     // 특성 열 헤더는 각 특성 고유색으로 표시 (상태 열 바로 옆부터)
     activeDefs.forEach((t,i)=>{
       const colIdx=tagStartCol+i;
-      const bg=TAG_BG[t.key]||FALLBACK_BG;
+      const bg=tagColorMap[t.key];
       const cell=hr.getCell(colIdx);
       cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:bg}};
       cell.font={bold:true,color:{argb:'FF374151'}};
@@ -1400,7 +1406,7 @@ async function downloadSampleExcel(){
     activeDefs.forEach((t,i)=>{
       const colIdx=tagStartCol+i;
       const letter=colLetter(colIdx);
-      const bg=TAG_BG[t.key]||FALLBACK_BG;
+      const bg=tagColorMap[t.key];
       ws.addConditionalFormatting({
         ref:`${letter}${firstDataRow}:${letter}${lastDataRow}`,
         rules:[{type:'expression',formulae:[`${letter}${firstDataRow}<>""`],style:{fill:{type:'pattern',pattern:'solid',bgColor:{argb:bg}}}}]
@@ -1436,7 +1442,7 @@ async function downloadSampleExcel(){
       const thisRow=statRow;
       addStatRow(t.excelHeader,{formula:`COUNTIFS(${letter}${firstDataRow}:${letter}${lastDataRow},"<>",${statusColLetter}${firstDataRow}:${statusColLetter}${lastDataRow},"재학")`},target);
       // 통계의 특성 행도 헤더와 동일한 고유색 배경으로 표시
-      const bg=TAG_BG[t.key]||FALLBACK_BG;
+      const bg=tagColorMap[t.key];
       const labelCell=ws.getRow(thisRow).getCell(statLabelCol);
       labelCell.fill={type:'pattern',pattern:'solid',fgColor:{argb:bg}};
       labelCell.font={size:10,bold:true,color:{argb:'FF374151'}};

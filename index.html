@@ -1791,6 +1791,26 @@ function autoAssign(onlyNew){
   distributeBalanced(shuffle(remainingPool.filter(s=>s.gender==='남')));
   distributeBalanced(shuffle(remainingPool.filter(s=>s.gender==='여')));
 
+  // 전체 인원(가중치 기준) 격차가 크면, 특성이 적어 영향이 적은 학생부터 무거운 반→가벼운 반으로 옮겨 균형을 맞춤
+  (function rebalanceTotals(){
+    const maxIter=pool.length+5;
+    for(let iter=0;iter<maxIter;iter++){
+      const weights=classes.map(c=>({c,w:classWeight(c.id)}));
+      const heaviest=weights.reduce((a,b)=>b.w>a.w?b:a);
+      const lightest=weights.reduce((a,b)=>b.w<a.w?b:a);
+      if(heaviest.w-lightest.w<=1||heaviest.c.id===lightest.c.id)break;
+      const candidates=(assignments[heaviest.c.id]||[])
+        .map(id=>students.find(s=>s.id===id))
+        .filter(s=>s&&!rules.some(r=>r.idA===s.id||r.idB===s.id));
+      if(!candidates.length)break;
+      candidates.sort((a,b)=>a.tags.length-b.tags.length);
+      const moveStudent=candidates[0];
+      assignments[heaviest.c.id]=assignments[heaviest.c.id].filter(id=>id!==moveStudent.id);
+      assignments[lightest.c.id]=assignments[lightest.c.id]||[];
+      assignments[lightest.c.id].push(moveStudent.id);
+    }
+  })();
+
   rules.forEach(r=>{
     const sA=allPool.find(s=>s.id===r.idA),sB=allPool.find(s=>s.id===r.idB);if(!sA||!sB)return;
     const clsA=classes.find(c=>assignments[c.id].includes(r.idA));
@@ -2056,7 +2076,7 @@ function renderStats(){
     <div class="stat-box"><div class="stat-label">전체 학생</div><div class="stat-value">${total}</div><div class="stat-sub">기준학년</div></div>
     <div class="stat-box"><div class="stat-label">배정 완료</div><div class="stat-value" style="color:var(--green)">${totalAssigned}</div><div class="stat-sub">명</div></div>
     <div class="stat-box"><div class="stat-label">미배정</div><div class="stat-value" style="color:${total-totalAssigned>0?'var(--red)':'var(--green)'}">${total-totalAssigned}</div><div class="stat-sub">명</div></div>
-    <div class="stat-box"><div class="stat-label">가중치 합계</div><div class="stat-value" style="color:var(--orange)">${totalWeight}</div><div class="stat-sub">도움반 ×${doumWeight}</div></div>
+    <div class="stat-box"><div class="stat-label">가중치 합계</div><div class="stat-value" style="color:var(--orange)">${totalWeight}</div><div class="stat-sub">${(allTagDefs().find(t=>t.key==='도움')?.label)||'특수교육'} ×${doumWeight}</div></div>
     <div class="stat-box"><div class="stat-label">편성 반 수</div><div class="stat-value">${classes.length}</div><div class="stat-sub">반</div></div>
   </div>`;
 
@@ -2069,7 +2089,7 @@ function renderStats(){
   html+=`<tr><td>🏫 실제 인원</td>${counts.map(v=>`<td>${v}명</td>`).join('')}<td class="${mxC-mnC<=1?'balance-ok':'balance-warn'}">${mxC-mnC}</td></tr>`;
 
   const mxW=Math.max(...wtByClass),mnW=Math.min(...wtByClass);
-  html+=`<tr style="background:var(--orange-light)"><td>⚖️ 가중치<br><small style="color:var(--text-sub)">(도움=${doumWeight}명)</small></td>${wtByClass.map(v=>`<td style="font-weight:700;color:var(--orange)">${v}</td>`).join('')}<td class="${mxW-mnW<=1?'balance-ok':'balance-warn'}">${mxW-mnW}</td></tr>`;
+  html+=`<tr style="background:var(--orange-light)"><td>⚖️ 가중치<br><small style="color:var(--text-sub)">(${(allTagDefs().find(t=>t.key==='도움')?.label)||'특수교육'}=${doumWeight}명)</small></td>${wtByClass.map(v=>`<td style="font-weight:700;color:var(--orange)">${v}</td>`).join('')}<td class="${mxW-mnW<=1?'balance-ok':'balance-warn'}">${mxW-mnW}</td></tr>`;
 
   ['남','여'].forEach(g=>{
     const vals=classes.map(cls=>(assignments[cls.id]||[]).filter(id=>students.find(s=>s.id===id)?.gender===g).length);
@@ -2164,7 +2184,7 @@ async function exportExcel(){
   const addSR=(label,vals)=>{const mx=Math.max(...vals),mn=Math.min(...vals);const row=ws2.addRow([label,...vals.map(v=>v+'명'),(mx-mn)+'']);row.getCell(1).font={bold:true};row.eachCell(cell=>{cell.alignment={horizontal:'center'};cell.border={bottom:{style:'hair',color:{argb:'FFE5E7EB'}}};});ws2.getCell(row.number,classes.length+2).font={bold:true,color:{argb:(mx-mn)<=1?'FF16A34A':(mx-mn)<=2?'FFD97706':'FFEF4444'}};};
   addSR('전체 인원',classes.map(c=>(assignments[c.id]||[]).length));
   const wtVals=classes.map(c=>(assignments[c.id]||[]).reduce((acc,id)=>acc+(students.find(s=>s.id===id)?.tags.includes('도움')?doumWeight:1),0));
-  const wr=ws2.addRow([`가중치(도움×${doumWeight})`,...wtVals.map(v=>v+''),''+(Math.max(...wtVals)-Math.min(...wtVals))]);wr.getCell(1).font={bold:true};wr.eachCell(cell=>{cell.alignment={horizontal:'center'};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFEDD5'}};cell.font={color:{argb:'FFC2410C'},bold:true};});
+  const wr=ws2.addRow([`가중치(${(allTagDefs().find(t=>t.key==='도움')?.label)||'특수교육'}×${doumWeight})`,...wtVals.map(v=>v+''),''+(Math.max(...wtVals)-Math.min(...wtVals))]);wr.getCell(1).font={bold:true};wr.eachCell(cell=>{cell.alignment={horizontal:'center'};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFFFEDD5'}};cell.font={color:{argb:'FFC2410C'},bold:true};});
   addSR('남학생',classes.map(c=>(assignments[c.id]||[]).filter(id=>students.find(s=>s.id===id)?.gender==='남').length));
   addSR('여학생',classes.map(c=>(assignments[c.id]||[]).filter(id=>students.find(s=>s.id===id)?.gender==='여').length));
   getBalanceTags().forEach(tag=>{const vals=classes.map(c=>(assignments[c.id]||[]).filter(id=>students.find(s=>s.id===id)?.tags.includes(tag)).length);if(vals.some(v=>v>0))addSR(tagLabel(tag),vals);});

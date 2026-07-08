@@ -1791,23 +1791,45 @@ function autoAssign(onlyNew){
   distributeBalanced(shuffle(remainingPool.filter(s=>s.gender==='남')));
   distributeBalanced(shuffle(remainingPool.filter(s=>s.gender==='여')));
 
-  // 전체 인원(가중치 기준) 격차가 크면, 특성이 적어 영향이 적은 학생부터 무거운 반→가벼운 반으로 옮겨 균형을 맞춤
-  (function rebalanceTotals(){
+  // 1순위: 전체 인원(실제 인원 수) 균형 — 특성이 적어 영향이 적은 학생부터 많은 반→적은 반으로 이동
+  (function rebalanceRawCount(){
     const maxIter=pool.length+5;
     for(let iter=0;iter<maxIter;iter++){
-      const weights=classes.map(c=>({c,w:classWeight(c.id)}));
-      const heaviest=weights.reduce((a,b)=>b.w>a.w?b:a);
-      const lightest=weights.reduce((a,b)=>b.w<a.w?b:a);
-      if(heaviest.w-lightest.w<=1||heaviest.c.id===lightest.c.id)break;
-      const candidates=(assignments[heaviest.c.id]||[])
+      const counts=classes.map(c=>({c,n:(assignments[c.id]||[]).length}));
+      const most=counts.reduce((a,b)=>b.n>a.n?b:a);
+      const least=counts.reduce((a,b)=>b.n<a.n?b:a);
+      if(most.n-least.n<=1||most.c.id===least.c.id)break;
+      const candidates=(assignments[most.c.id]||[])
         .map(id=>students.find(s=>s.id===id))
         .filter(s=>s&&!rules.some(r=>r.idA===s.id||r.idB===s.id));
       if(!candidates.length)break;
       candidates.sort((a,b)=>a.tags.length-b.tags.length);
       const moveStudent=candidates[0];
-      assignments[heaviest.c.id]=assignments[heaviest.c.id].filter(id=>id!==moveStudent.id);
-      assignments[lightest.c.id]=assignments[lightest.c.id]||[];
-      assignments[lightest.c.id].push(moveStudent.id);
+      assignments[most.c.id]=assignments[most.c.id].filter(id=>id!==moveStudent.id);
+      assignments[least.c.id]=assignments[least.c.id]||[];
+      assignments[least.c.id].push(moveStudent.id);
+    }
+  })();
+
+  // 2순위: 특수교육(도움) 분산 — 이미 맞춘 전체 인원은 그대로 두고, 반끼리 학생 1:1 맞교환으로만 개선
+  (function rebalanceHelpBySwap(){
+    const maxIter=pool.length+5;
+    for(let iter=0;iter<maxIter;iter++){
+      const helpCounts=classes.map(c=>({c,n:(assignments[c.id]||[]).filter(id=>{const s=students.find(x=>x.id===id);return s&&s.tags.includes('도움');}).length}));
+      const most=helpCounts.reduce((a,b)=>b.n>a.n?b:a);
+      const least=helpCounts.reduce((a,b)=>b.n<a.n?b:a);
+      if(most.n-least.n<=1||most.c.id===least.c.id)break;
+      const helpCandidate=(assignments[most.c.id]||[])
+        .map(id=>students.find(s=>s.id===id))
+        .find(s=>s&&s.tags.includes('도움')&&!rules.some(r=>r.idA===s.id||r.idB===s.id));
+      if(!helpCandidate)break;
+      const leastPool=(assignments[least.c.id]||[])
+        .map(id=>students.find(s=>s.id===id))
+        .filter(s=>s&&!s.tags.includes('도움')&&!rules.some(r=>r.idA===s.id||r.idB===s.id));
+      if(!leastPool.length)break;
+      const swapCandidate=leastPool.find(s=>s.gender===helpCandidate.gender)||leastPool[0];
+      assignments[most.c.id]=assignments[most.c.id].filter(id=>id!==helpCandidate.id).concat(swapCandidate.id);
+      assignments[least.c.id]=assignments[least.c.id].filter(id=>id!==swapCandidate.id).concat(helpCandidate.id);
     }
   })();
 

@@ -1825,7 +1825,7 @@ function renderAssign(){
     const females=clsStudents.filter(s=>s.gender==='여').length;
     const wt=clsStudents.reduce((acc,s)=>acc+(s.tags.includes('도움')?doumWeight:1),0);
     const hasDoum=clsStudents.some(s=>s.tags.includes('도움'));
-    html+=`<div class="class-box cc-${idx+1}" id="drop-${cls.id}" ondragover="event.preventDefault()" ondrop="dropStudent(event,'${cls.id}')">
+    html+=`<div class="class-box cc-${(idx%6)+1}" id="drop-${cls.id}" ondragover="event.preventDefault()" ondrop="dropStudent(event,'${cls.id}')">
       <div class="class-header">
         <span>${cls.name}</span>
         <div class="class-stat">
@@ -2103,7 +2103,7 @@ async function exportExcel(){
   const TAG_BG={'우수':'FFFDE68A','부진':'FFFECACA','지도':'FFE9D5FF','수급':'FFFED7AA','다문화':'FFE0F2FE','도움':'FFD1FAE5'};
   const tagLabel=(t)=>{const def=allTagDefs().find(d=>d.key===t);return def?def.label:t;};
   // 1) 반별 번호(새 학급 기준 순번) 열 추가
-  const headers=[];classes.forEach(c=>headers.push(c.name+' (번호)',c.name+' (이름)',c.name+' (특성)'));
+  const headers=[];classes.forEach(c=>headers.push(c.name+'\n번호',c.name+'\n이름',c.name+'\n특성'));
   ws1.addRow(headers);ws1.getRow(1).eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'},size:11};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A5F'}};cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};cell.border={bottom:{style:'thin'}};});
   const sorted={};classes.forEach(c=>{sorted[c.id]=(assignments[c.id]||[]).map(id=>students.find(st=>st.id===id)).filter(Boolean).sort((a,b)=>a.name.localeCompare(b.name,'ko'));});
   const maxRows=Math.max(...classes.map(c=>sorted[c.id].length));
@@ -2125,7 +2125,7 @@ async function exportExcel(){
     wsRow.height=20;
   }
   // 1) 글씨 잘림 방지: 열 너비를 넉넉하게, 특성 열은 줄바꿈 허용
-  classes.forEach((_,i)=>{ws1.getColumn(i*3+1).width=9;ws1.getColumn(i*3+2).width=14;ws1.getColumn(i*3+3).width=26;});ws1.getRow(1).height=28;
+  classes.forEach((_,i)=>{ws1.getColumn(i*3+1).width=9;ws1.getColumn(i*3+2).width=14;ws1.getColumn(i*3+3).width=26;});ws1.getRow(1).height=34;
 
   // 3) 각 반 아래에 그 반만의 남/여/총인원 통계 추가
   const statRow1=maxRows+3,statRow2=maxRows+4,statRow3=maxRows+5;

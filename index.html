@@ -1094,6 +1094,65 @@ function checkUploadVersion(uploadedVersion){
     b.style.display='none';
   }
 }
+// ── 재방문자용: 설정 없이 업로드 시 파일에서 설정 자동 인식 ──
+function detectSettingsFromWorkbook(wb){
+  const dataSheetNames=wb.SheetNames.filter(n=>n!=='_meta');
+  if(!dataSheetNames.length)return null;
+  const numClasses=Math.min(dataSheetNames.length,MAX_CLASSES);
+  const ws=wb.Sheets[dataSheetNames[0]];
+  const firstCell=ws['A1'];
+  const headerStartRow=(firstCell&&String(firstCell.v||'').trim().startsWith('※'))?1:0;
+  const rows=XLSX.utils.sheet_to_json(ws,{defval:'',range:headerStartRow});
+  if(!rows.length)return null;
+  const headers=Object.keys(rows[0]);
+  const stripTarget=(h)=>h.replace(/\n/g,'').replace(/\(\s*\d+\s*명\s*선정\s*\)/,'').trim();
+  const extractTarget=(h)=>{const m=h.replace(/\n/g,'').match(/\(\s*(\d+)\s*명\s*선정\s*\)/);return m?+m[1]:null;};
+  const KNOWN_COLS=new Set(['학년','반','번호','이름','성별','상태','재학여부','메모','비고','부탁내용','분리대상','분리 대상','동반대상','동반 대상','출석번호','출번','성명']);
+  const BUILTIN_MATCH={};TAG_DEFS.forEach(t=>{(TAG_COL_CANDS[t.key]||[t.excelHeader]).forEach(c=>{BUILTIN_MATCH[c]=t.key;});});
+  const detectedTags=[];
+  headers.forEach(h=>{
+    const stripped=stripTarget(h);
+    if(!stripped||KNOWN_COLS.has(stripped))return;
+    const target=extractTarget(h);
+    const builtinKey=BUILTIN_MATCH[stripped];
+    detectedTags.push({key:builtinKey||null,label:stripped,target,builtin:!!builtinKey});
+  });
+  let srcGrade=5;
+  const gradeCol=headers.find(h=>stripTarget(h)==='학년');
+  if(gradeCol){
+    const withGrade=rows.find(r=>r[gradeCol]!==''&&r[gradeCol]!=null);
+    if(withGrade)srcGrade=+withGrade[gradeCol]||5;
+  }
+  return {numClasses,srcGrade,detectedTags};
+}
+function applyDetectedSettings(detected){
+  selectedSrcGrades=new Set([String(detected.srcGrade)]);
+  document.querySelectorAll('#src-grade-pills .grade-pill').forEach(p=>{p.classList.toggle('active',p.dataset.grade===String(detected.srcGrade));});
+  autoSetTargetGrade();
+  classes=[];assignments={};
+  for(let i=0;i<detected.numClasses;i++){
+    const id='class_'+i;
+    classes.push({id,name:CLASS_NAMES_DEFAULT[i]||(i+1)+'반',color:CLASS_COLORS[i%CLASS_COLORS.length]});
+    assignments[id]=[];
+  }
+  detected.detectedTags.forEach(t=>{
+    if(t.builtin){
+      enabledTags.add(t.key);
+      if(t.target!==null)tagTargets[t.key]=t.target;
+    }else{
+      const key='c_'+uid();
+      customTagDefs.push({key,label:t.label,icon:'🔖',excelHeader:t.label,custom:true,balance:true});
+      enabledTags.add(key);
+      if(t.target!==null)tagTargets[key]=t.target;
+    }
+  });
+  const numEl=document.getElementById('setup-num-classes');if(numEl)numEl.value=detected.numClasses;
+  renderClassNameInputs(classes.map(c=>c.name));
+  renderTagEnableSettings();renderTagSelectors();updateFormatGuideText();refreshSettingsVersion();updateTemplateSettingsSummary();
+  clearSetupDirty();
+  saveSession();
+  showToast(`✅ 파일에서 설정을 자동으로 인식했습니다: ${detected.numClasses}개 반 · 특성 ${detected.detectedTags.length}개 · ${detected.srcGrade}학년 기준`);
+}
 function handleExcelFile(file){
   if(!file)return;
   if(!/\.(xlsx|xls)$/i.test(file.name)){showToast('⚠️ .xlsx/.xls 파일만 가능합니다','warn');return;}
@@ -1101,6 +1160,10 @@ function handleExcelFile(file){
   reader.onload=(e)=>{
     try{
       const wb=XLSX.read(e.target.result,{type:'array'});
+      if(classes.length===0){
+        const detected=detectSettingsFromWorkbook(wb);
+        if(detected&&detected.numClasses>0){applyDetectedSettings(detected);}
+      }
       const metaWs=wb.Sheets['_meta'];
       const uploadedVersion=metaWs&&metaWs['A1']?String(metaWs['A1'].v):null;
       checkUploadVersion(uploadedVersion);

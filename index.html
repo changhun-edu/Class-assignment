@@ -1109,8 +1109,12 @@ function detectSettingsFromWorkbook(wb){
   const extractTarget=(h)=>{const m=h.replace(/\n/g,'').match(/\(\s*(\d+)\s*명\s*선정\s*\)/);return m?+m[1]:null;};
   const KNOWN_COLS=new Set(['학년','반','번호','이름','성별','상태','재학여부','메모','비고','부탁내용','분리대상','분리 대상','동반대상','동반 대상','출석번호','출번','성명']);
   const BUILTIN_MATCH={};TAG_DEFS.forEach(t=>{(TAG_COL_CANDS[t.key]||[t.excelHeader]).forEach(c=>{BUILTIN_MATCH[c]=t.key;});});
+  // 특성 열은 반드시 "성별"과 "분리대상" 사이에만 있음 — 그 뒤(메모, 통계 블록 등)는 스캔 대상에서 제외
+  const idxGender=headers.findIndex(h=>stripTarget(h)==='성별');
+  const idxSep=headers.findIndex(h=>stripTarget(h)==='분리대상'||stripTarget(h)==='분리 대상');
+  const candidateHeaders=(idxGender>=0&&idxSep>idxGender)?headers.slice(idxGender+1,idxSep):headers;
   const detectedTags=[];
-  headers.forEach(h=>{
+  candidateHeaders.forEach(h=>{
     const stripped=stripTarget(h);
     if(!stripped||KNOWN_COLS.has(stripped))return;
     const target=extractTarget(h);

@@ -2275,6 +2275,7 @@ function resetAppState(){
   assignScrollTop=0;
   ctagType='select';
   setupDirty=false;
+  setupApplied=false;
   tourStep=0;
 
   // 열려있는 모달/드로어 닫기
@@ -2308,6 +2309,7 @@ function resetAppState(){
   renderRulesList();
   updateExportBadge();
   updateFinalizeUI();
+  updateDownloadBtn();
 
   switchTab('setup');
   const tagCard=document.getElementById('tag-settings-card');

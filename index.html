@@ -2184,7 +2184,7 @@ async function exportExcel(){
   // 헤더 행 (2행)
   ws1.addRow(headers);
   ws1.getRow(2).eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'},size:11};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A5F'}};cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};cell.border={bottom:{style:'thin'}};});
-  ws1.getRow(2).height=34;
+  ws1.getRow(2).height=44;
 
   const sorted={};classes.forEach(c=>{sorted[c.id]=(assignments[c.id]||[]).map(id=>students.find(st=>st.id===id)).filter(Boolean).sort((a,b)=>a.name.localeCompare(b.name,'ko'));});
   const maxRows=Math.max(...classes.map(c=>sorted[c.id].length));
@@ -2196,7 +2196,7 @@ async function exportExcel(){
         row.push(r+1);
         row.push(s.name);
         row.push(s.tags.map(tagLabel).join(', ')+(noteFull?` [${noteFull}]`:''));
-        row.push(`${srcGradeNum}-${s.cls}`);
+        row.push(`${srcGradeNum}-${s.cls}-${s.num||'-'}`);
       }else{row.push('');row.push('');row.push('');row.push('');}
     });
     const wsRow=ws1.addRow(row);
@@ -2220,23 +2220,57 @@ async function exportExcel(){
     wsRow.height=Math.max(20, maxLines*16);
   }
   // 열 너비
-  classes.forEach((_,i)=>{ws1.getColumn(i*4+1).width=7;ws1.getColumn(i*4+2).width=13;ws1.getColumn(i*4+3).width=24;ws1.getColumn(i*4+4).width=9;});
+  classes.forEach((_,i)=>{ws1.getColumn(i*4+1).width=7;ws1.getColumn(i*4+2).width=13;ws1.getColumn(i*4+3).width=24;ws1.getColumn(i*4+4).width=14;});
 
-  // 소계 행
-  const statRow1=maxRows+4,statRow2=maxRows+5,statRow3=maxRows+6;
+  // 소계 행 — 각 반별로 반 이름 헤더 + 남/여/총인원 박스
+  const statStartRow=maxRows+4;
+  // 빈 구분 행
+  const sepRow=ws1.getRow(maxRows+3);
+  sepRow.height=6;
+
   classes.forEach((c,ci)=>{
     const clsStudents=sorted[c.id];
     const maleCount=clsStudents.filter(s=>s.gender==='남').length;
     const femaleCount=clsStudents.filter(s=>s.gender==='여').length;
-    const nameCol=ci*4+2,tagCol=ci*4+3;
-    const setStat=(rowNum,label,value)=>{
-      const row=ws1.getRow(rowNum);
-      row.getCell(nameCol).value=label;row.getCell(nameCol).font={bold:true,size:9,color:{argb:'FF374151'}};row.getCell(nameCol).alignment={horizontal:'right'};
-      row.getCell(tagCol).value=value;row.getCell(tagCol).font={bold:true,size:9,color:{argb:'FF1E3A5F'}};row.getCell(tagCol).alignment={horizontal:'left'};
-    };
-    setStat(statRow1,'남',maleCount+'명');
-    setStat(statRow2,'여',femaleCount+'명');
-    setStat(statRow3,'총인원',clsStudents.length+'명');
+    const total=clsStudents.length;
+    // 각 반의 열 범위: ci*4+1 ~ ci*4+4 (번호·이름·특성·전년도)
+    const colStart=ci*4+1, colEnd=ci*4+4;
+
+    // 반 이름 헤더 행
+    const hRow=ws1.getRow(statStartRow);
+    ws1.mergeCells(statStartRow, colStart, statStartRow, colEnd);
+    const hCell=hRow.getCell(colStart);
+    hCell.value=c.name;
+    hCell.font={bold:true,size:10,color:{argb:'FFFFFFFF'}};
+    hCell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A5F'}};
+    hCell.alignment={horizontal:'center',vertical:'middle'};
+    hRow.height=20;
+
+    // 남/여/총인원 각 행
+    const stats=[
+      {label:'남', value:`${maleCount}명`, color:'FF1D4ED8'},
+      {label:'여', value:`${femaleCount}명`, color:'FFBE185D'},
+      {label:'총인원', value:`${total}명`, color:'FF1E3A5F'},
+    ];
+    stats.forEach((st,si)=>{
+      const rowNum=statStartRow+1+si;
+      const r=ws1.getRow(rowNum);
+      // 레이블: 번호+이름 열 병합
+      ws1.mergeCells(rowNum, colStart, rowNum, colStart+1);
+      const lCell=r.getCell(colStart);
+      lCell.value=st.label;
+      lCell.font={bold:true,size:10,color:{argb:'FF374151'}};
+      lCell.alignment={horizontal:'right',vertical:'middle'};
+      lCell.border={top:{style:'thin',color:{argb:'FFE5E7EB'}},bottom:{style:'thin',color:{argb:'FFE5E7EB'}},left:{style:'thin',color:{argb:'FFE5E7EB'}}};
+      // 값: 특성+전년도 열 병합
+      ws1.mergeCells(rowNum, colStart+2, rowNum, colEnd);
+      const vCell=r.getCell(colStart+2);
+      vCell.value=st.value;
+      vCell.font={bold:true,size:11,color:{argb:st.color}};
+      vCell.alignment={horizontal:'left',vertical:'middle'};
+      vCell.border={top:{style:'thin',color:{argb:'FFE5E7EB'}},bottom:{style:'thin',color:{argb:'FFE5E7EB'}},right:{style:'thin',color:{argb:'FFE5E7EB'}}};
+      r.height=20;
+    });
   });
 
   // ── 반별 개별 시트 ──
@@ -2266,7 +2300,7 @@ async function exportExcel(){
     clsStudents.forEach((s,i)=>{
       const noteFull=[s.note,getRuleNoteSuffix(s.id)].filter(Boolean).join(' ');
       const tagText=s.tags.map(tagLabel).join(', ');
-      const prevCls=`${srcGradeNum}-${s.cls}`;
+      const prevCls=`${srcGradeNum}-${s.cls}-${s.num||'-'}`;
       const dRow=ws.addRow([i+1, s.name, s.gender, tagText, prevCls, noteFull]);
       const numC=dRow.getCell(1),nc=dRow.getCell(2),gc=dRow.getCell(3),tc=dRow.getCell(4),pc=dRow.getCell(5),mc=dRow.getCell(6);
       numC.alignment={horizontal:'center',vertical:'middle'};numC.font={size:10,color:{argb:'FF6B7280'}};
@@ -2289,7 +2323,7 @@ async function exportExcel(){
     const sumRow=ws.addRow(['','남 '+males+'명 / 여 '+females+'명 / 총 '+clsStudents.length+'명','','','','']);
     sumRow.getCell(2).font={bold:true,size:10,color:{argb:'FF1E3A5F'}};sumRow.getCell(2).alignment={horizontal:'left'};
     // 열 너비
-    ws.getColumn(1).width=8;ws.getColumn(2).width=16;ws.getColumn(3).width=8;ws.getColumn(4).width=28;ws.getColumn(5).width=10;ws.getColumn(6).width=20;
+    ws.getColumn(1).width=8;ws.getColumn(2).width=16;ws.getColumn(3).width=8;ws.getColumn(4).width=28;ws.getColumn(5).width=14;ws.getColumn(6).width=20;
   });
 
   // 2) 균형 통계는 별도 시트로 분리

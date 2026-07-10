@@ -958,7 +958,7 @@ function updateFormatGuideText(){
 function computeSettingsVersion(){
   const n=classes.length||+document.getElementById('setup-num-classes').value||0;
   const tagKey=allTagDefs().filter(t=>enabledTags.has(t.key)).map(t=>t.key).join(',');
-  const raw=`n${n}|${tagKey}`;
+  const raw=`n${n}|cur${numCurrentClasses}|${tagKey}`;
   let h=0;for(let i=0;i<raw.length;i++){h=((h<<5)-h+raw.charCodeAt(i))|0;}
   return 'v'+Math.abs(h);
 }
@@ -1203,7 +1203,7 @@ function handleExcelFile(file){
       allTagDefs().forEach(t=>{if(enabledTags.has(t.key))COL[t.key]=TAG_COL_CANDS[t.key]||[t.excelHeader];});
       const stripTarget=(h)=>h.replace(/\n/g,' ').replace(/\s*\(\s*\d+\s*명\s*선정\s*\)\s*/g,'').replace(/\s+/g,' ').trim();
       const TAG_KEYS=allTagDefs().filter(t=>enabledTags.has(t.key)).map(t=>t.key);
-      const isTrue=(v)=>v!==''&&v!==0&&v!=='0'&&v!==false&&v!=='X'&&v!=='x';
+      const isTrue=(v)=>v!==null&&v!==undefined&&v!==''&&v!==false&&String(v).trim()!==''&&String(v).toUpperCase()!=='X';
       const dataSheetNames=wb.SheetNames.filter(n=>n!=='_meta');
       pendingExcelStudents=[];let errors=0;let anyRows=false;let transferredCount=0;
       dataSheetNames.forEach(sheetName=>{

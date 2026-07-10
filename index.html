@@ -377,7 +377,7 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
       <div>
       <div class="flex-row" style="align-items:center;gap:10px;margin-bottom:12px">
         <span style="background:var(--primary);color:#fff;font-size:.78rem;font-weight:800;padding:3px 10px;border-radius:10px;letter-spacing:.02em">STEP 1</span>
-        <b style="font-size:1rem">반 설정 및 배정 규칙</b>
+        <b style="font-size:1rem">반 설정</b>
       </div>
       <div style="display:flex;flex-direction:column;gap:16px">
       <div class="card" id="setup-card" style="max-width:680px">
@@ -405,15 +405,16 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
           <div id="class-name-inputs" class="form-row mt-4"></div>
         </div>
       </div>
+      <div class="flex-row" style="align-items:center;gap:10px;margin-bottom:12px;margin-top:20px">
+        <span style="background:var(--primary);color:#fff;font-size:.78rem;font-weight:800;padding:3px 10px;border-radius:10px;letter-spacing:.02em">STEP 2</span>
+        <b style="font-size:1rem">학생 배정 규칙</b>
+      </div>
       <div class="card" id="tag-settings-card" style="max-width:680px">
-        <div class="flex-row-between" style="cursor:pointer" onclick="toggleAccordion('tag-settings-body')">
-          <div class="card-title" style="margin:0">✅ 학생 배정 규칙</div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span id="tag-settings-summary" style="font-size:.82rem;color:var(--text-sub);font-weight:400"></span>
-            <span id="tag-settings-chevron" style="font-size:.8rem;color:var(--text-muted)">▸</span>
-          </div>
+        <div class="flex-row-between">
+          <div class="card-title" style="margin:0">✅ 특성 사용 설정</div>
+          <span id="tag-settings-summary" style="font-size:.82rem;color:var(--text-sub);font-weight:400"></span>
         </div>
-        <div id="tag-settings-body" style="display:none;margin-top:12px">
+        <div id="tag-settings-body" style="margin-top:12px">
           <div style="font-size:.82rem;color:var(--text-sub);margin-bottom:12px;line-height:1.6">
             성별은 항상 균등하게 배분됩니다. 체크된 특성은 학생 입력·엑셀 서식/업로드·통계에 반영되고, 옆의 배지대로 자동 배치에 사용됩니다. 체크 해제하면 모든 곳에서 제외됩니다.
           </div>
@@ -489,14 +490,15 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
 
       <div>
       <div class="flex-row" style="align-items:center;gap:10px;margin-bottom:12px">
-        <span style="background:var(--primary);color:#fff;font-size:.78rem;font-weight:800;padding:3px 10px;border-radius:10px;letter-spacing:.02em">STEP 2</span>
+        <span style="background:var(--primary);color:#fff;font-size:.78rem;font-weight:800;padding:3px 10px;border-radius:10px;letter-spacing:.02em">STEP 3</span>
         <b style="font-size:1rem">엑셀 서식 받기</b>
       </div>
       <div class="card" id="template-download-card" style="max-width:480px">
         <div class="card-title">⬇️ 학생 명단 서식 다운로드</div>
         <div id="template-settings-summary" style="font-size:.82rem;color:var(--text-sub);background:var(--surface2);border-radius:var(--r);padding:8px 12px;margin-bottom:12px"></div>
         <div id="template-version-banner" style="display:none;margin-bottom:12px;padding:8px 12px;border-radius:var(--r);font-size:.82rem;background:var(--amber-light);color:var(--amber);border:1px solid #fde68a"></div>
-        <button class="btn btn-excel" style="width:100%;padding:13px;font-size:1rem;font-weight:800" onclick="downloadSampleExcel()">⬇ 서식 파일 다운로드</button>
+        <button id="btn-download-excel" class="btn btn-excel" style="width:100%;padding:13px;font-size:1rem;font-weight:800" onclick="downloadSampleExcel()" disabled title="먼저 &quot;반 설정 적용&quot; 버튼을 눌러주세요">⬇ 서식 파일 다운로드</button>
+        <div id="download-btn-hint" style="margin-top:8px;font-size:.8rem;color:var(--amber);font-weight:600;display:flex;align-items:center;gap:5px">⚠️ STEP 1·2 설정 후 <b>반 설정 적용</b>을 눌러야 활성화됩니다.</div>
         <div class="mt-16" style="border-top:1px solid var(--border);padding-top:14px">
           <div style="font-size:.82rem;color:var(--text-sub);font-weight:600;line-height:2">
             ① 다운로드 → ② 엑셀에서 명단 입력 → ③ 업로드
@@ -1554,6 +1556,7 @@ function saveEdit(){
 
 // ── 반 설정 ──
 let setupDirty=false;
+let setupApplied=false;
 function markSetupDirty(){
   setupDirty=true;
   const hint=document.getElementById('setup-dirty-hint');
@@ -1567,6 +1570,20 @@ function clearSetupDirty(){
   if(hint)hint.style.display='none';
   const card=document.getElementById('setup-card');
   if(card)card.classList.remove('setup-dirty');
+}
+function updateDownloadBtn(){
+  const btn=document.getElementById('btn-download-excel');
+  const hint=document.getElementById('download-btn-hint');
+  if(!btn)return;
+  if(setupApplied){
+    btn.disabled=false;
+    btn.title='';
+    if(hint)hint.style.display='none';
+  }else{
+    btn.disabled=true;
+    btn.title='먼저 "반 설정 적용" 버튼을 눌러주세요';
+    if(hint)hint.style.display='flex';
+  }
 }
 function applySetup(){
   if(blockIfFinalized())return;
@@ -1602,6 +1619,8 @@ function applySetup(){
   clearSetupDirty();
   renderAssignIfActive();
   saveSession();
+  setupApplied=true;
+  updateDownloadBtn();
   // 적용 버튼 피드백
   const btn=document.querySelector('[onclick="applySetup()"]');
   if(btn){btn.textContent='✅ 설정 적용됨';btn.style.background='var(--green)';btn.style.color='#fff';
@@ -2443,7 +2462,9 @@ if(restored){
     document.getElementById('setup-num-classes').value=n;
     const savedNames=classes.map(c=>c.name);
     renderClassNameInputs(savedNames);
+    setupApplied=true;
   }
+  updateDownloadBtn();
   renderRulesList();
   const hasAssigned=classes.some(c=>(assignments[c.id]||[]).length>0);
   if(hasAssigned){switchTab('assign');}

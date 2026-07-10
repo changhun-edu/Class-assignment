@@ -519,6 +519,19 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
             ① 다운로드 → ② 엑셀에서 명단 입력 → ③ 업로드
           </div>
         </div>
+        <!-- 서식 파일 보유자 안내 -->
+        <div style="margin-top:14px;padding:12px 14px;background:#f0fdf4;border:2px solid #16a34a;border-radius:var(--r);display:flex;flex-direction:column;gap:8px">
+          <div style="font-size:.85rem;font-weight:800;color:#15803d;display:flex;align-items:center;gap:6px">
+            📂 이미 서식 파일이 있으신가요?
+          </div>
+          <div style="font-size:.8rem;color:#166534;line-height:1.6">
+            이전에 받은 서식 파일에 명단을 작성했다면<br>
+            아래 버튼을 눌러 바로 업로드하세요.
+          </div>
+          <button class="btn btn-success" style="width:100%;font-weight:800;font-size:.92rem;padding:10px" onclick="switchTab('upload')">
+            📤 바로 엑셀 업로드하기 →
+          </button>
+        </div>
         <div class="mt-16"><button class="btn btn-secondary" style="width:100%" onclick="switchTab('upload')">→ 작성 완료 후 엑셀 업로드로 이동</button></div>
       </div>
       </div>
@@ -2149,44 +2162,73 @@ async function exportExcel(){
   const ws1=wb.addWorksheet('반별 명렬표');
   const TAG_BG={'우수':'FFFDE68A','부진':'FFFECACA','지도':'FFE9D5FF','수급':'FFFED7AA','다문화':'FFE0F2FE','도움':'FFD1FAE5'};
   const tagLabel=(t)=>{const def=allTagDefs().find(d=>d.key===t);return def?def.label:t;};
-  // 1) 반별 번호(새 학급 기준 순번) 열 추가
-  const headers=[];classes.forEach(c=>headers.push(c.name+'\n번호',c.name+'\n이름',c.name+'\n특성'));
-  ws1.addRow(headers);ws1.getRow(1).eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'},size:11};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A5F'}};cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};cell.border={bottom:{style:'thin'}};});
+  // 학년도 계산: 현재 연도 기준 (다음 학년도)
+  const thisYear=new Date().getFullYear();
+  const nextYear=thisYear+1; // 다음 학년도
+  const tgtGrade=+document.getElementById('setup-grade')?.value||6;
+  const srcGradeNum=+([...selectedSrcGrades][0]||5);
+
+  // 반별 명렬표: 열 구성 = 번호·이름·특성·전년도학년반 (4열 × 반 수)
+  const headers=[];classes.forEach(c=>headers.push(c.name+'\n번호',c.name+'\n이름',c.name+'\n특성',c.name+'\n(전)학년반'));
+
+  // 타이틀 행 (1행) — 전체 열 병합
+  const totalCols=classes.length*4;
+  ws1.addRow([`${nextYear}학년도 ${tgtGrade}학년 반별 명렬표`]);
+  ws1.mergeCells(1,1,1,totalCols);
+  const titleCell=ws1.getRow(1).getCell(1);
+  titleCell.font={bold:true,size:14,color:{argb:'FF1E3A5F'}};
+  titleCell.alignment={horizontal:'center',vertical:'middle'};
+  titleCell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE8F0FE'}};
+  ws1.getRow(1).height=36;
+
+  // 헤더 행 (2행)
+  ws1.addRow(headers);
+  ws1.getRow(2).eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'},size:11};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A5F'}};cell.alignment={horizontal:'center',vertical:'middle',wrapText:true};cell.border={bottom:{style:'thin'}};});
+  ws1.getRow(2).height=34;
+
   const sorted={};classes.forEach(c=>{sorted[c.id]=(assignments[c.id]||[]).map(id=>students.find(st=>st.id===id)).filter(Boolean).sort((a,b)=>a.name.localeCompare(b.name,'ko'));});
   const maxRows=Math.max(...classes.map(c=>sorted[c.id].length));
   for(let r=0;r<maxRows;r++){
-    const row=[];classes.forEach(c=>{const s=sorted[c.id][r]||null;if(s){row.push(r+1);row.push(s.name);const noteFull=[s.note,getRuleNoteSuffix(s.id)].filter(Boolean).join(' ');row.push(s.tags.map(tagLabel).join(', ')+(noteFull?` [${noteFull}]`:''));}else{row.push('');row.push('');row.push('');}});
+    const row=[];classes.forEach(c=>{
+      const s=sorted[c.id][r]||null;
+      if(s){
+        const noteFull=[s.note,getRuleNoteSuffix(s.id)].filter(Boolean).join(' ');
+        row.push(r+1);
+        row.push(s.name);
+        row.push(s.tags.map(tagLabel).join(', ')+(noteFull?` [${noteFull}]`:''));
+        row.push(`${srcGradeNum}-${s.cls}`);
+      }else{row.push('');row.push('');row.push('');row.push('');}
+    });
     const wsRow=ws1.addRow(row);
     let maxLines=1;
     classes.forEach((c,ci)=>{
       const s=sorted[c.id][r]||null;if(!s)return;
-      const numC=wsRow.getCell(ci*3+1),nc=wsRow.getCell(ci*3+2),tc=wsRow.getCell(ci*3+3);
+      const numC=wsRow.getCell(ci*4+1),nc=wsRow.getCell(ci*4+2),tc=wsRow.getCell(ci*4+3),pc=wsRow.getCell(ci*4+4);
       numC.alignment={horizontal:'center',vertical:'middle'};numC.font={color:{argb:'FF6B7280'},size:9};
       nc.font={color:{argb:s.gender==='남'?'FF1D4ED8':'FFBE185D'},bold:s.tags.includes('수급'),italic:s.tags.includes('다문화'),size:10};
       nc.alignment={horizontal:'center',vertical:'middle'};
       const ft=getBalanceTags().find(t=>s.tags.includes(t));
       if(ft)nc.fill={type:'pattern',pattern:'solid',fgColor:{argb:TAG_BG[ft]||'FFE0E7FF'}};
       tc.font={size:9,color:{argb:'FF6B7280'}};tc.alignment={horizontal:'left',vertical:'middle',wrapText:true};
-      [numC,nc,tc].forEach(cell=>{cell.border={top:{style:'thin',color:{argb:'FFE5E7EB'}},bottom:{style:'thin',color:{argb:'FFE5E7EB'}},left:{style:'thin',color:{argb:'FFE5E7EB'}},right:{style:'thin',color:{argb:'FFE5E7EB'}}};});
-      // 특성 열 줄 수 계산 (열 너비 26 기준, 한글 약 13자/줄)
+      pc.font={size:9,color:{argb:'FF9CA3AF'}};pc.alignment={horizontal:'center',vertical:'middle'};
+      [numC,nc,tc,pc].forEach(cell=>{cell.border={top:{style:'thin',color:{argb:'FFE5E7EB'}},bottom:{style:'thin',color:{argb:'FFE5E7EB'}},left:{style:'thin',color:{argb:'FFE5E7EB'}},right:{style:'thin',color:{argb:'FFE5E7EB'}}};});
       const tagText=tc.value||'';
       const lineCount=Math.ceil(tagText.length/13)||1;
       if(lineCount>maxLines)maxLines=lineCount;
     });
     if(r%2===1)wsRow.eachCell(cell=>{if(!cell.fill?.fgColor?.argb||cell.fill.fgColor.argb==='FF000000')cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF8F9FB'}};});
-    // 셀 높이: 기본 20, 특성이 2줄 이상이면 줄당 15씩 추가
     wsRow.height=Math.max(20, maxLines*16);
   }
-  // 1) 글씨 잘림 방지: 열 너비를 넉넉하게, 특성 열은 줄바꿈 허용
-  classes.forEach((_,i)=>{ws1.getColumn(i*3+1).width=9;ws1.getColumn(i*3+2).width=14;ws1.getColumn(i*3+3).width=26;});ws1.getRow(1).height=34;
+  // 열 너비
+  classes.forEach((_,i)=>{ws1.getColumn(i*4+1).width=7;ws1.getColumn(i*4+2).width=13;ws1.getColumn(i*4+3).width=24;ws1.getColumn(i*4+4).width=9;});
 
-  // 3) 각 반 아래에 그 반만의 남/여/총인원 통계 추가
-  const statRow1=maxRows+3,statRow2=maxRows+4,statRow3=maxRows+5;
+  // 소계 행
+  const statRow1=maxRows+4,statRow2=maxRows+5,statRow3=maxRows+6;
   classes.forEach((c,ci)=>{
     const clsStudents=sorted[c.id];
     const maleCount=clsStudents.filter(s=>s.gender==='남').length;
     const femaleCount=clsStudents.filter(s=>s.gender==='여').length;
-    const nameCol=ci*3+2,tagCol=ci*3+3;
+    const nameCol=ci*4+2,tagCol=ci*4+3;
     const setStat=(rowNum,label,value)=>{
       const row=ws1.getRow(rowNum);
       row.getCell(nameCol).value=label;row.getCell(nameCol).font={bold:true,size:9,color:{argb:'FF374151'}};row.getCell(nameCol).alignment={horizontal:'right'};
@@ -2200,8 +2242,18 @@ async function exportExcel(){
   // ── 반별 개별 시트 ──
   classes.forEach(cls=>{
     const ws=wb.addWorksheet(cls.name);
-    // 헤더
-    const hRow=ws.addRow(['번호','이름','성별','특성','메모']);
+
+    // 타이틀 행
+    ws.addRow([`${nextYear}학년도 ${tgtGrade}학년 ${cls.name}`]);
+    ws.mergeCells(1,1,1,6);
+    const tCell=ws.getRow(1).getCell(1);
+    tCell.font={bold:true,size:14,color:{argb:'FF1E3A5F'}};
+    tCell.alignment={horizontal:'center',vertical:'middle'};
+    tCell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE8F0FE'}};
+    ws.getRow(1).height=36;
+
+    // 헤더 행
+    const hRow=ws.addRow(['번호','이름','성별','특성','(전)학년반','메모']);
     hRow.eachCell(cell=>{
       cell.font={bold:true,color:{argb:'FFFFFFFF'},size:11};
       cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A5F'}};
@@ -2209,22 +2261,24 @@ async function exportExcel(){
       cell.border={bottom:{style:'thin'}};
     });
     hRow.height=28;
+
     const clsStudents=(assignments[cls.id]||[]).map(id=>students.find(s=>s.id===id)).filter(Boolean).sort((a,b)=>a.name.localeCompare(b.name,'ko'));
     clsStudents.forEach((s,i)=>{
       const noteFull=[s.note,getRuleNoteSuffix(s.id)].filter(Boolean).join(' ');
       const tagText=s.tags.map(tagLabel).join(', ');
-      const dRow=ws.addRow([i+1, s.name, s.gender, tagText, noteFull]);
-      const numC=dRow.getCell(1),nc=dRow.getCell(2),gc=dRow.getCell(3),tc=dRow.getCell(4),mc=dRow.getCell(5);
+      const prevCls=`${srcGradeNum}-${s.cls}`;
+      const dRow=ws.addRow([i+1, s.name, s.gender, tagText, prevCls, noteFull]);
+      const numC=dRow.getCell(1),nc=dRow.getCell(2),gc=dRow.getCell(3),tc=dRow.getCell(4),pc=dRow.getCell(5),mc=dRow.getCell(6);
       numC.alignment={horizontal:'center',vertical:'middle'};numC.font={size:10,color:{argb:'FF6B7280'}};
       nc.font={bold:true,size:11,color:{argb:s.gender==='남'?'FF1D4ED8':'FFBE185D'}};nc.alignment={horizontal:'center',vertical:'middle'};
       const ft=getBalanceTags().find(t=>s.tags.includes(t));
       if(ft)nc.fill={type:'pattern',pattern:'solid',fgColor:{argb:TAG_BG[ft]||'FFE0E7FF'}};
       gc.alignment={horizontal:'center',vertical:'middle'};gc.font={size:10,color:{argb:s.gender==='남'?'FF1D4ED8':'FFBE185D'}};
       tc.font={size:10,color:{argb:'FF374151'}};tc.alignment={horizontal:'left',vertical:'middle',wrapText:true};
+      pc.font={size:9,color:{argb:'FF9CA3AF'}};pc.alignment={horizontal:'center',vertical:'middle'};
       mc.font={size:9,color:{argb:'FF9CA3AF'}};mc.alignment={horizontal:'left',vertical:'middle',wrapText:true};
-      [numC,nc,gc,tc,mc].forEach(cell=>{cell.border={top:{style:'thin',color:{argb:'FFE5E7EB'}},bottom:{style:'thin',color:{argb:'FFE5E7EB'}},left:{style:'thin',color:{argb:'FFE5E7EB'}},right:{style:'thin',color:{argb:'FFE5E7EB'}}};});
+      [numC,nc,gc,tc,pc,mc].forEach(cell=>{cell.border={top:{style:'thin',color:{argb:'FFE5E7EB'}},bottom:{style:'thin',color:{argb:'FFE5E7EB'}},left:{style:'thin',color:{argb:'FFE5E7EB'}},right:{style:'thin',color:{argb:'FFE5E7EB'}}};});
       if(i%2===1)dRow.eachCell(cell=>{if(!cell.fill?.fgColor?.argb||cell.fill.fgColor.argb==='FF000000')cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF8F9FB'}};});
-      // 행 높이 자동 조정
       const lines=Math.ceil((tagText.length||1)/20)||1;
       dRow.height=Math.max(22,lines*16);
     });
@@ -2232,10 +2286,10 @@ async function exportExcel(){
     const males=clsStudents.filter(s=>s.gender==='남').length;
     const females=clsStudents.filter(s=>s.gender==='여').length;
     ws.addRow([]);
-    const sumRow=ws.addRow(['','남 '+males+'명 / 여 '+females+'명 / 총 '+clsStudents.length+'명','','','']);
+    const sumRow=ws.addRow(['','남 '+males+'명 / 여 '+females+'명 / 총 '+clsStudents.length+'명','','','','']);
     sumRow.getCell(2).font={bold:true,size:10,color:{argb:'FF1E3A5F'}};sumRow.getCell(2).alignment={horizontal:'left'};
     // 열 너비
-    ws.getColumn(1).width=8;ws.getColumn(2).width=16;ws.getColumn(3).width=8;ws.getColumn(4).width=30;ws.getColumn(5).width=22;
+    ws.getColumn(1).width=8;ws.getColumn(2).width=16;ws.getColumn(3).width=8;ws.getColumn(4).width=28;ws.getColumn(5).width=10;ws.getColumn(6).width=20;
   });
 
   // 2) 균형 통계는 별도 시트로 분리

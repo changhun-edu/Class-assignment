@@ -381,28 +381,43 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
       </div>
       <div style="display:flex;flex-direction:column;gap:16px">
       <div class="card" id="setup-card" style="max-width:680px">
-        <div class="card-title">⚙️ 편성할 학년 및 반 수 설정</div>
-        <div class="mt-12">
-          <label>① 기준 학년 (<b style="color:var(--primary)">현재 학년</b>)</label>
-          <div class="flex-row mt-4" id="src-grade-pills">
-            <span class="pill pill-interactive grade-pill active" onclick="toggleSrcGrade(this,'5')" data-grade="5">5학년</span>
-            <span class="pill pill-interactive grade-pill" onclick="toggleSrcGrade(this,'4')" data-grade="4">4학년</span>
-            <span class="pill pill-interactive grade-pill" onclick="toggleSrcGrade(this,'3')" data-grade="3">3학년</span>
-            <span class="pill pill-interactive grade-pill" onclick="toggleSrcGrade(this,'2')" data-grade="2">2학년</span>
-            <span class="pill pill-interactive grade-pill" onclick="toggleSrcGrade(this,'1')" data-grade="1">1학년</span>
+        <div class="card-title">⚙️ 학년 및 반 수 설정</div>
+
+        <!-- 현재 학년 정보 (서식·업로드 기준) -->
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;margin-bottom:14px">
+          <div style="font-size:.78rem;font-weight:800;color:var(--text-sub);letter-spacing:.04em;margin-bottom:10px">📂 현재 학년 정보 — 서식 파일·업로드 기준</div>
+          <div>
+            <label>① 기준 학년 (<b style="color:var(--primary)">현재 학년</b>)</label>
+            <div class="flex-row mt-4" id="src-grade-pills">
+              <span class="pill pill-interactive grade-pill active" onclick="toggleSrcGrade(this,'5')" data-grade="5">5학년</span>
+              <span class="pill pill-interactive grade-pill" onclick="toggleSrcGrade(this,'4')" data-grade="4">4학년</span>
+              <span class="pill pill-interactive grade-pill" onclick="toggleSrcGrade(this,'3')" data-grade="3">3학년</span>
+              <span class="pill pill-interactive grade-pill" onclick="toggleSrcGrade(this,'2')" data-grade="2">2학년</span>
+              <span class="pill pill-interactive grade-pill" onclick="toggleSrcGrade(this,'1')" data-grade="1">1학년</span>
+            </div>
+          </div>
+          <div class="mt-12">
+            <label>현재 반 수 <span style="font-weight:400;color:var(--text-muted)">(서식 파일에 이 반 수만큼 시트가 생성됩니다)</span></label>
+            <input type="number" id="setup-num-current-classes" min="1" max="15" value="4" style="width:120px" oninput="clampNumCurrentClasses();markSetupDirty()">
           </div>
         </div>
-        <div class="form-row form-row-2 mt-16">
-          <div><label>② 편성 대상 학년 (다음 학년도)</label>
-            <select id="setup-grade"><option value="6">6학년</option><option value="5">5학년</option><option value="4">4학년</option><option value="3">3학년</option><option value="2">2학년</option></select>
-            <div id="target-grade-hint" style="font-size:.78rem;color:var(--text-sub);margin-top:4px">기준 학년(5학년) 기준 자동 설정됨</div>
+
+        <!-- 편성 결과 설정 (배정 작업 기준) -->
+        <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:var(--r);padding:14px 16px">
+          <div style="font-size:.78rem;font-weight:800;color:#0369a1;letter-spacing:.04em;margin-bottom:10px">🏫 편성 결과 설정 — 배정 작업 기준</div>
+          <div class="form-row form-row-2">
+            <div><label>② 편성 대상 학년 (다음 학년도)</label>
+              <select id="setup-grade"><option value="6">6학년</option><option value="5">5학년</option><option value="4">4학년</option><option value="3">3학년</option><option value="2">2학년</option></select>
+              <div id="target-grade-hint" style="font-size:.78rem;color:var(--text-sub);margin-top:4px">기준 학년(5학년) 기준 자동 설정됨</div>
+            </div>
+            <div><label>편성할 반 수 <span style="font-weight:400;color:var(--text-muted)">(최대 15반)</span></label>
+              <input type="number" id="setup-num-classes" min="1" max="15" value="4" oninput="clampNumClasses();markSetupDirty()">
+            </div>
           </div>
-          <div><label>편성할 반 수 (최대 15반)</label>
-            <input type="number" id="setup-num-classes" min="1" max="15" value="4" oninput="clampNumClasses();markSetupDirty()"></div>
-        </div>
-        <div class="mt-16">
-          <label>🏷️ 반 이름 설정</label>
-          <div id="class-name-inputs" class="form-row mt-4"></div>
+          <div class="mt-16">
+            <label>🏷️ 반 이름 설정</label>
+            <div id="class-name-inputs" class="form-row mt-4"></div>
+          </div>
         </div>
       </div>
       <div class="flex-row" style="align-items:center;gap:10px;margin-bottom:12px;margin-top:20px">
@@ -671,6 +686,7 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
 <script>
 // ── 상태 ──
 let students=[], classes=[], assignments={}, unassigned=[], rules=[];
+let numCurrentClasses=4; // 현재 반 수 (서식 파일 시트 수 기준)
 let settingsVersionId=null, lastDownloadedVersionId=null, lastUploadedVersionId=null;
 let dupStudentsCount=0;
 let editingId=null, activeTags=new Set(), editTags=new Set();
@@ -783,6 +799,15 @@ function clampNumClasses(){
   if(v>MAX_CLASSES)v=MAX_CLASSES;
   el.value=v;
   renderClassNameInputs();
+}
+function clampNumCurrentClasses(){
+  const el=document.getElementById('setup-num-current-classes');
+  if(!el)return;
+  let v=+el.value;
+  if(isNaN(v)||v<1)v=1;
+  if(v>MAX_CLASSES)v=MAX_CLASSES;
+  el.value=v;
+  numCurrentClasses=v;
 }
 
 // ── 탭 전환 ──
@@ -917,7 +942,7 @@ function updateTemplateSettingsSummary(){
   const src=[...selectedSrcGrades][0]||'?';
   const tgt=document.getElementById('setup-grade')?.value||'?';
   const activeCount=allTagDefs().filter(t=>enabledTags.has(t.key)).length;
-  el.innerHTML=`📌 현재 설정: <b>${src}→${tgt}학년</b> · <b>${classes.length}개 반</b> · 특성 <b>${activeCount}개</b> 사용`;
+  el.innerHTML=`📌 현재 설정: <b>${src}→${tgt}학년</b> · 현재 <b>${numCurrentClasses}개 반</b>(서식) → 편성 <b>${classes.length}개 반</b>(배정) · 특성 <b>${activeCount}개</b> 사용`;
   updateUploadEmptyStateSummary();
 }
 function updateUploadEmptyStateSummary(){
@@ -1338,7 +1363,7 @@ async function downloadSampleExcel(){
   wb.calcProperties.fullCalcOnLoad=true; // 통계 수식이 열자마자 재계산되도록 (안 그러면 0으로 보일 수 있음)
   const activeDefs=allTagDefs().filter(t=>enabledTags.has(t.key));
   const srcGrade=+([...selectedSrcGrades][0]||5);
-  const numSheets=classes.length||4;
+  const numSheets=numCurrentClasses||classes.length||4;
   const headerLabel=(t)=>tagTargets.hasOwnProperty(t.key)?`${t.excelHeader}\n(${tagTargets[t.key]}명 선정)`:t.excelHeader;
   const headers=['학년','반','번호','이름','성별','상태',...activeDefs.map(headerLabel),'분리대상','동반대상','메모'];
   const MAX_NUM=30;
@@ -1587,6 +1612,9 @@ function updateDownloadBtn(){
 }
 function applySetup(){
   if(blockIfFinalized())return;
+  // 현재 반 수 저장
+  const ncEl=document.getElementById('setup-num-current-classes');
+  if(ncEl){let nc=+ncEl.value;if(isNaN(nc)||nc<1)nc=1;if(nc>MAX_CLASSES)nc=MAX_CLASSES;ncEl.value=nc;numCurrentClasses=nc;}
   let n=+document.getElementById('setup-num-classes').value;
   if(isNaN(n)||n<1)n=1;
   if(n>MAX_CLASSES)n=MAX_CLASSES;
@@ -2129,6 +2157,7 @@ async function exportExcel(){
   for(let r=0;r<maxRows;r++){
     const row=[];classes.forEach(c=>{const s=sorted[c.id][r]||null;if(s){row.push(r+1);row.push(s.name);const noteFull=[s.note,getRuleNoteSuffix(s.id)].filter(Boolean).join(' ');row.push(s.tags.map(tagLabel).join(', ')+(noteFull?` [${noteFull}]`:''));}else{row.push('');row.push('');row.push('');}});
     const wsRow=ws1.addRow(row);
+    let maxLines=1;
     classes.forEach((c,ci)=>{
       const s=sorted[c.id][r]||null;if(!s)return;
       const numC=wsRow.getCell(ci*3+1),nc=wsRow.getCell(ci*3+2),tc=wsRow.getCell(ci*3+3);
@@ -2139,9 +2168,14 @@ async function exportExcel(){
       if(ft)nc.fill={type:'pattern',pattern:'solid',fgColor:{argb:TAG_BG[ft]||'FFE0E7FF'}};
       tc.font={size:9,color:{argb:'FF6B7280'}};tc.alignment={horizontal:'left',vertical:'middle',wrapText:true};
       [numC,nc,tc].forEach(cell=>{cell.border={top:{style:'thin',color:{argb:'FFE5E7EB'}},bottom:{style:'thin',color:{argb:'FFE5E7EB'}},left:{style:'thin',color:{argb:'FFE5E7EB'}},right:{style:'thin',color:{argb:'FFE5E7EB'}}};});
+      // 특성 열 줄 수 계산 (열 너비 26 기준, 한글 약 13자/줄)
+      const tagText=tc.value||'';
+      const lineCount=Math.ceil(tagText.length/13)||1;
+      if(lineCount>maxLines)maxLines=lineCount;
     });
     if(r%2===1)wsRow.eachCell(cell=>{if(!cell.fill?.fgColor?.argb||cell.fill.fgColor.argb==='FF000000')cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF8F9FB'}};});
-    wsRow.height=20;
+    // 셀 높이: 기본 20, 특성이 2줄 이상이면 줄당 15씩 추가
+    wsRow.height=Math.max(20, maxLines*16);
   }
   // 1) 글씨 잘림 방지: 열 너비를 넉넉하게, 특성 열은 줄바꿈 허용
   classes.forEach((_,i)=>{ws1.getColumn(i*3+1).width=9;ws1.getColumn(i*3+2).width=14;ws1.getColumn(i*3+3).width=26;});ws1.getRow(1).height=34;
@@ -2161,6 +2195,47 @@ async function exportExcel(){
     setStat(statRow1,'남',maleCount+'명');
     setStat(statRow2,'여',femaleCount+'명');
     setStat(statRow3,'총인원',clsStudents.length+'명');
+  });
+
+  // ── 반별 개별 시트 ──
+  classes.forEach(cls=>{
+    const ws=wb.addWorksheet(cls.name);
+    // 헤더
+    const hRow=ws.addRow(['번호','이름','성별','특성','메모']);
+    hRow.eachCell(cell=>{
+      cell.font={bold:true,color:{argb:'FFFFFFFF'},size:11};
+      cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A5F'}};
+      cell.alignment={horizontal:'center',vertical:'middle'};
+      cell.border={bottom:{style:'thin'}};
+    });
+    hRow.height=28;
+    const clsStudents=(assignments[cls.id]||[]).map(id=>students.find(s=>s.id===id)).filter(Boolean).sort((a,b)=>a.name.localeCompare(b.name,'ko'));
+    clsStudents.forEach((s,i)=>{
+      const noteFull=[s.note,getRuleNoteSuffix(s.id)].filter(Boolean).join(' ');
+      const tagText=s.tags.map(tagLabel).join(', ');
+      const dRow=ws.addRow([i+1, s.name, s.gender, tagText, noteFull]);
+      const numC=dRow.getCell(1),nc=dRow.getCell(2),gc=dRow.getCell(3),tc=dRow.getCell(4),mc=dRow.getCell(5);
+      numC.alignment={horizontal:'center',vertical:'middle'};numC.font={size:10,color:{argb:'FF6B7280'}};
+      nc.font={bold:true,size:11,color:{argb:s.gender==='남'?'FF1D4ED8':'FFBE185D'}};nc.alignment={horizontal:'center',vertical:'middle'};
+      const ft=getBalanceTags().find(t=>s.tags.includes(t));
+      if(ft)nc.fill={type:'pattern',pattern:'solid',fgColor:{argb:TAG_BG[ft]||'FFE0E7FF'}};
+      gc.alignment={horizontal:'center',vertical:'middle'};gc.font={size:10,color:{argb:s.gender==='남'?'FF1D4ED8':'FFBE185D'}};
+      tc.font={size:10,color:{argb:'FF374151'}};tc.alignment={horizontal:'left',vertical:'middle',wrapText:true};
+      mc.font={size:9,color:{argb:'FF9CA3AF'}};mc.alignment={horizontal:'left',vertical:'middle',wrapText:true};
+      [numC,nc,gc,tc,mc].forEach(cell=>{cell.border={top:{style:'thin',color:{argb:'FFE5E7EB'}},bottom:{style:'thin',color:{argb:'FFE5E7EB'}},left:{style:'thin',color:{argb:'FFE5E7EB'}},right:{style:'thin',color:{argb:'FFE5E7EB'}}};});
+      if(i%2===1)dRow.eachCell(cell=>{if(!cell.fill?.fgColor?.argb||cell.fill.fgColor.argb==='FF000000')cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFF8F9FB'}};});
+      // 행 높이 자동 조정
+      const lines=Math.ceil((tagText.length||1)/20)||1;
+      dRow.height=Math.max(22,lines*16);
+    });
+    // 소계 행
+    const males=clsStudents.filter(s=>s.gender==='남').length;
+    const females=clsStudents.filter(s=>s.gender==='여').length;
+    ws.addRow([]);
+    const sumRow=ws.addRow(['','남 '+males+'명 / 여 '+females+'명 / 총 '+clsStudents.length+'명','','','']);
+    sumRow.getCell(2).font={bold:true,size:10,color:{argb:'FF1E3A5F'}};sumRow.getCell(2).alignment={horizontal:'left'};
+    // 열 너비
+    ws.getColumn(1).width=8;ws.getColumn(2).width=16;ws.getColumn(3).width=8;ws.getColumn(4).width=30;ws.getColumn(5).width=22;
   });
 
   // 2) 균형 통계는 별도 시트로 분리
@@ -2259,6 +2334,7 @@ function clearStudents(){
 function resetAppState(){
   // 전역 상태를 초기값으로 되돌림 (새로고침과 동일한 효과, 실제 새로고침 없이)
   students=[];classes=[];assignments={};unassigned=[];rules=[];
+  numCurrentClasses=4;
   settingsVersionId=null;lastDownloadedVersionId=null;lastUploadedVersionId=null;
   dupStudentsCount=0;
   editingId=null;activeTags=new Set();editTags=new Set();
@@ -2285,6 +2361,7 @@ function resetAppState(){
 
   // 입력 폼 값 초기화
   const numClsEl=document.getElementById('setup-num-classes');if(numClsEl)numClsEl.value=4;
+  const numCurClsEl=document.getElementById('setup-num-current-classes');if(numCurClsEl)numCurClsEl.value=4;
   document.querySelectorAll('#src-grade-pills .grade-pill').forEach(p=>{p.classList.toggle('active',p.dataset.grade==='5');});
   autoSetTargetGrade();
   const bulkEl=document.getElementById('bulk-input');if(bulkEl)bulkEl.value='';
@@ -2370,7 +2447,7 @@ function showToast(msg,type){
 
 // ── 세션 저장/복원 ──
 const SESSION_KEY='bpe_session';
-function saveSession(){try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({students,classes,assignments,rules,selectedSrcGrades:[...selectedSrcGrades],enabledTags:[...enabledTags],customTagDefs,lastDownloadedVersionId,doumWeight,tagTargets,changesSinceExport,isFinalized}));}catch(e){}}
+function saveSession(){try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({students,classes,assignments,rules,selectedSrcGrades:[...selectedSrcGrades],enabledTags:[...enabledTags],customTagDefs,lastDownloadedVersionId,doumWeight,tagTargets,changesSinceExport,isFinalized,numCurrentClasses}));}catch(e){}}
 function sanitizeEnabledTags(rawArray){
   if(!rawArray)return new Set(TAG_DEFS.map(t=>t.key));
   const validKeys=new Set(allTagDefs().map(t=>t.key));
@@ -2391,6 +2468,9 @@ function loadSession(){
     changesSinceExport=data.changesSinceExport||0;
     updateExportBadge();
     isFinalized=data.isFinalized||false;
+    numCurrentClasses=data.numCurrentClasses||classes.length||4;
+    const ncEl=document.getElementById('setup-num-current-classes');
+    if(ncEl)ncEl.value=numCurrentClasses;
     updateFinalizeUI();
     if(data.excellentTarget!==undefined)tagTargets['우수']=data.excellentTarget;
     document.querySelectorAll('#src-grade-pills .grade-pill').forEach(el=>{el.classList.toggle('active',selectedSrcGrades.has(el.dataset.grade));});
@@ -2426,6 +2506,7 @@ if(window.innerWidth>=768&&window.innerWidth<=1199){
 // ── 초기화 ──
 // DOM이 완전히 준비된 후 이벤트 바인딩
 document.getElementById('setup-num-classes').addEventListener('change',()=>renderClassNameInputs());
+document.getElementById('setup-num-current-classes').addEventListener('change',()=>clampNumCurrentClasses());
 document.getElementById('excel-dropzone').addEventListener('click',()=>document.getElementById('excel-file-input').click());
 populateClassNumberSelect();
 renderClassNameInputs();

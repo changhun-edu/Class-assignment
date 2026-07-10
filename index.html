@@ -2316,12 +2316,26 @@ async function exportExcel(){
       const lines=Math.ceil((tagText.length||1)/20)||1;
       dRow.height=Math.max(22,lines*16);
     });
-    // 소계 행
+    // 소계 행 — 남/여/총인원 3행 박스
     const males=clsStudents.filter(s=>s.gender==='남').length;
     const females=clsStudents.filter(s=>s.gender==='여').length;
-    ws.addRow([]);
-    const sumRow=ws.addRow(['','남 '+males+'명 / 여 '+females+'명 / 총 '+clsStudents.length+'명','','','','']);
-    sumRow.getCell(2).font={bold:true,size:10,color:{argb:'FF1E3A5F'}};sumRow.getCell(2).alignment={horizontal:'left'};
+    ws.addRow([]).height=6; // 구분 여백
+    const stats=[
+      {label:'남',  value:`${males}명`,              color:'FF1D4ED8'},
+      {label:'여',  value:`${females}명`,             color:'FFBE185D'},
+      {label:'총인원',value:`${clsStudents.length}명`, color:'FF1E3A5F'},
+    ];
+    stats.forEach(st=>{
+      const r=ws.addRow(['', st.label, '', st.value, '', '']);
+      const lCell=r.getCell(2), vCell=r.getCell(4);
+      lCell.font={bold:true,size:10,color:{argb:'FF374151'}};
+      lCell.alignment={horizontal:'right',vertical:'middle'};
+      lCell.border={top:{style:'thin',color:{argb:'FFE5E7EB'}},bottom:{style:'thin',color:{argb:'FFE5E7EB'}},left:{style:'thin',color:{argb:'FFE5E7EB'}}};
+      vCell.font={bold:true,size:11,color:{argb:st.color}};
+      vCell.alignment={horizontal:'left',vertical:'middle'};
+      vCell.border={top:{style:'thin',color:{argb:'FFE5E7EB'}},bottom:{style:'thin',color:{argb:'FFE5E7EB'}},right:{style:'thin',color:{argb:'FFE5E7EB'}}};
+      r.height=20;
+    });
     // 열 너비
     ws.getColumn(1).width=8;ws.getColumn(2).width=16;ws.getColumn(3).width=8;ws.getColumn(4).width=28;ws.getColumn(5).width=14;ws.getColumn(6).width=20;
   });

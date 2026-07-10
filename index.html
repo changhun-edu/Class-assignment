@@ -1133,8 +1133,8 @@ function detectSettingsFromWorkbook(wb){
   const rows=XLSX.utils.sheet_to_json(ws,{defval:'',range:headerStartRow});
   if(!rows.length)return null;
   const headers=Object.keys(rows[0]);
-  const stripTarget=(h)=>h.replace(/\n/g,'').replace(/\(\s*\d+\s*명\s*선정\s*\)/,'').trim();
-  const extractTarget=(h)=>{const m=h.replace(/\n/g,'').match(/\(\s*(\d+)\s*명\s*선정\s*\)/);return m?+m[1]:null;};
+  const stripTarget=(h)=>h.replace(/\n/g,' ').replace(/\s*\(\s*\d+\s*명\s*선정\s*\)\s*/g,'').replace(/\s+/g,' ').trim();
+  const extractTarget=(h)=>{const m=h.replace(/\n/g,' ').match(/\(\s*(\d+)\s*명\s*선정\s*\)/);return m?+m[1]:null;};
   const KNOWN_COLS=new Set(['학년','반','번호','이름','성별','상태','재학여부','메모','비고','부탁내용','분리대상','분리 대상','동반대상','동반 대상','출석번호','출번','성명']);
   const BUILTIN_MATCH={};TAG_DEFS.forEach(t=>{(TAG_COL_CANDS[t.key]||[t.excelHeader]).forEach(c=>{BUILTIN_MATCH[c]=t.key;});});
   // 특성 열은 반드시 "성별"과 "분리대상" 사이에만 있음 — 그 뒤(메모, 통계 블록 등)는 스캔 대상에서 제외
@@ -1201,7 +1201,7 @@ function handleExcelFile(file){
       checkUploadVersion(uploadedVersion);
       const COL={grade:['학년'],cls:['반'],num:['번호','출석번호','출번'],name:['이름','성명'],gender:['성별'],status:['상태','재학여부'],note:['메모','비고','부탁내용'],sep:['분리대상','분리 대상'],pair:['동반대상','동반 대상']};
       allTagDefs().forEach(t=>{if(enabledTags.has(t.key))COL[t.key]=TAG_COL_CANDS[t.key]||[t.excelHeader];});
-      const stripTarget=(h)=>h.replace(/\n/g,'').replace(/\(\s*\d+\s*명\s*선정\s*\)/,'').trim();
+      const stripTarget=(h)=>h.replace(/\n/g,' ').replace(/\s*\(\s*\d+\s*명\s*선정\s*\)\s*/g,'').replace(/\s+/g,' ').trim();
       const TAG_KEYS=allTagDefs().filter(t=>enabledTags.has(t.key)).map(t=>t.key);
       const isTrue=(v)=>v!==''&&v!==0&&v!=='0'&&v!==false&&v!=='X'&&v!=='x';
       const dataSheetNames=wb.SheetNames.filter(n=>n!=='_meta');

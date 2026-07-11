@@ -235,8 +235,9 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
 .ri-del:hover{background:var(--red-light);color:var(--red)}
 
 /* 위반 배너 */
-.violation-banner{background:var(--red-light);border:1px solid #fca5a5;border-radius:var(--r);padding:9px 14px;margin-bottom:8px;font-size:.87rem;color:var(--red);display:flex;align-items:flex-start;gap:8px}
-.violation-banner.동반{background:var(--amber-light);border-color:#fcd34d;color:var(--amber)}
+.violation-banner{background:#fff1f2;border:2px solid #f87171;border-left:5px solid #ef4444;border-radius:var(--r);padding:11px 14px;margin-bottom:10px;font-size:.9rem;color:#b91c1c;display:flex;align-items:flex-start;gap:10px;box-shadow:0 2px 8px rgba(239,68,68,.15);animation:violationPulse .4s ease}
+.violation-banner.동반{background:#fffbeb;border-color:#fbbf24;border-left-color:#f59e0b;color:#92400e;box-shadow:0 2px 8px rgba(245,158,11,.15)}
+@keyframes violationPulse{0%{transform:scale(1)}50%{transform:scale(1.015)}100%{transform:scale(1)}}
 
 /* 엑셀 드롭존 */
 #excel-dropzone{border:2px dashed var(--border);border-radius:var(--r);padding:22px 16px;text-align:center;cursor:pointer;transition:all .15s;background:var(--surface2)}
@@ -1874,7 +1875,7 @@ function renderAssign(){
     html+=`<div style="margin-bottom:10px">`;
     vs.forEach(v=>{
       if(v.type==='분리')html+=`<div class="violation-banner">🚫 <div><strong>${v.sA.name}</strong>과 <strong>${v.sB.name}</strong>이 같은 <strong>${v.cls.name}</strong>에 배정되어 있습니다.</div></div>`;
-      else html+=`<div class="violation-banner 동반">🤝 <div><strong>${v.sA.name}</strong>(${v.clsA.name})과 <strong>${v.sB.name}</strong>(${v.clsB.name})이 다른 반입니다.</div></div>`;
+      else html+=`<div class="violation-banner 동반">⚠️ 동반 규칙 위반 &nbsp;|&nbsp; <div><strong>${v.sA.name}</strong>(${v.clsA.name})과 <strong>${v.sB.name}</strong>(${v.clsB.name})이 <strong>다른 반</strong>에 배정되어 있습니다. 같은 반으로 이동해주세요.</div></div>`;
     });
     html+=`</div>`;
   }
@@ -1986,7 +1987,7 @@ function dropStudent(e,targetId){
   const rel=vs.filter(v=>v.sA.id===dragStudentId||v.sB.id===dragStudentId);
   if(rel.length)rel.forEach(v=>{
     if(v.type==='분리')showToast(`⚠️ 규칙 위반: ${v.sA.name}↔${v.sB.name} 분리 필요`,'warn');
-    else showToast(`⚠️ 규칙 위반: ${v.sA.name}↔${v.sB.name} 동반 필요`,'warn');
+    else showToast(`🚨 동반 규칙 위반: ${v.sA.name} ↔ ${v.sB.name} 은(는) 같은 반이어야 합니다!`,'error');
   });
   dragStudentId=null;renderAssign();renderStatsIfActive();
   markDirty();
@@ -2543,8 +2544,17 @@ let toastTimer;
 function showToast(msg,type){
   const ex=document.querySelector('.toast');if(ex)ex.remove();clearTimeout(toastTimer);
   const el=document.createElement('div');el.className='toast';
-  el.style.background=type==='warn'?'#b45309':'#1a2233';el.textContent=msg;
-  document.body.appendChild(el);toastTimer=setTimeout(()=>el.remove(),2800);
+  if(type==='error'){
+    el.style.background='#dc2626';el.style.fontSize='1rem';el.style.fontWeight='800';
+    el.style.padding='14px 22px';el.style.boxShadow='0 4px 20px rgba(220,38,38,.5)';
+    el.style.border='2px solid #fca5a5';el.style.letterSpacing='.01em';
+    toastTimer=setTimeout(()=>el.remove(),4500);
+  } else {
+    el.style.background=type==='warn'?'#b45309':'#1a2233';
+    toastTimer=setTimeout(()=>el.remove(),2800);
+  }
+  el.textContent=msg;
+  document.body.appendChild(el);
 }
 
 // ── 세션 저장/복원 ──

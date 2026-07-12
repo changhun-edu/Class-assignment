@@ -1729,6 +1729,9 @@ function autoAssign(onlyNew){
   function lightestClass(){return[...classes].sort((a,b)=>classWeight(a.id)-classWeight(b.id))[0];}
   function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];}return arr;}
 
+  // 성별 카운트 헬퍼
+  function genderCount(cid,g){return(assignments[cid]||[]).filter(id=>{const s=students.find(st=>st.id===id);return s&&s.gender===g;}).length;}
+
   function distributeBalanced(group){
     const PTAGS=getBalanceTags();
     const tagRarity={};PTAGS.forEach(tag=>{tagRarity[tag]=allPool.filter(s=>s.tags.includes(tag)).length;});
@@ -1741,34 +1744,63 @@ function autoAssign(onlyNew){
       if(ta!==tb)return tb-ta;return Math.random()-.5;
     });
     // 기존 배정 인원의 특성 분포도 반영해서 새 학생을 균형있게 배분
+    // 동시에 같은 성별 인원이 가장 적은 반 우선 배치(성별 균형)
     const tagCount={};PTAGS.forEach(tag=>{tagCount[tag]={};classes.forEach(c=>{
       tagCount[tag][c.id]=(assignments[c.id]||[]).filter(id=>{const s=students.find(st=>st.id===id);return s&&s.tags.includes(tag);}).length;
     });});
     sorted.forEach(s=>{
       const pivot=getPivot(s);let tc;
-      if(pivot){tc=[...classes].sort((a,b)=>{const d=tagCount[pivot][a.id]-tagCount[pivot][b.id];return d!==0?d:classWeight(a.id)-classWeight(b.id);})[0];}
-      else{tc=lightestClass();}
+      if(pivot){
+        // 해당 특성이 가장 적은 반 중 같은 성별도 가장 적은 반 우선
+        tc=[...classes].sort((a,b)=>{
+          const d=tagCount[pivot][a.id]-tagCount[pivot][b.id];
+          if(d!==0)return d;
+          const gd=genderCount(a.id,s.gender)-genderCount(b.id,s.gender);
+          if(gd!==0)return gd;
+          return classWeight(a.id)-classWeight(b.id);
+        })[0];
+      } else {
+        // 특성 없는 학생: 같은 성별이 가장 적은 반 우선, 동점이면 전체 인원 적은 반
+        tc=[...classes].sort((a,b)=>{
+          const gd=genderCount(a.id,s.gender)-genderCount(b.id,s.gender);
+          if(gd!==0)return gd;
+          return classWeight(a.id)-classWeight(b.id);
+        })[0];
+      }
       assignments[tc.id]=assignments[tc.id]||[];assignments[tc.id].push(s.id);
       PTAGS.filter(t=>s.tags.includes(t)).forEach(tag=>{tagCount[tag][tc.id]++;});
     });
   }
 
-  // 특수교육(도움) 최우선 배치: 성별 구분 없이 통합해서 가장 고르게 분산시킨 뒤, 나머지 학생만 기존 방식으로 배치
+  // 특수교육(도움) 최우선 배치: 성별을 맞추면서 고르게 분산
   const helpPool=shuffle(pool.filter(s=>s.tags.includes('도움')));
   const helpCount={};classes.forEach(c=>{helpCount[c.id]=(assignments[c.id]||[]).filter(id=>{const st=students.find(x=>x.id===id);return st&&st.tags.includes('도움');}).length;});
   helpPool.forEach(s=>{
-    const tc=[...classes].sort((a,b)=>{const d=helpCount[a.id]-helpCount[b.id];return d!==0?d:classWeight(a.id)-classWeight(b.id);})[0];
+    const tc=[...classes].sort((a,b)=>{
+      const d=helpCount[a.id]-helpCount[b.id];
+      if(d!==0)return d;
+      const gd=genderCount(a.id,s.gender)-genderCount(b.id,s.gender);
+      if(gd!==0)return gd;
+      return classWeight(a.id)-classWeight(b.id);
+    })[0];
     assignments[tc.id]=assignments[tc.id]||[];assignments[tc.id].push(s.id);
     helpCount[tc.id]++;
   });
   const remainingPool=pool.filter(s=>!s.tags.includes('도움'));
 
-  distributeBalanced(shuffle(remainingPool.filter(s=>s.gender==='남')));
-  distributeBalanced(shuffle(remainingPool.filter(s=>s.gender==='여')));
+  // 남녀를 번갈아 1명씩 배치해서 성별 균형을 최대화
+  // (남·여 중 더 많은 쪽을 먼저 배치하면서 교차 배정)
+  const malePool=shuffle(remainingPool.filter(s=>s.gender==='남'));
+  const femalePool=shuffle(remainingPool.filter(s=>s.gender==='여'));
+  const maxLen=Math.max(malePool.length,femalePool.length);
+  const interleavedMale=[],interleavedFemale=[];
+  for(let i=0;i<maxLen;i++){if(i<malePool.length)interleavedMale.push(malePool[i]);if(i<femalePool.length)interleavedFemale.push(femalePool[i]);}
+  distributeBalanced(interleavedMale);
+  distributeBalanced(interleavedFemale);
 
-  // 1순위: 전체 인원(실제 인원 수) 균형 — 특성이 적어 영향이 적은 학생부터 많은 반→적은 반으로 이동
+  // 1순위: 전체 인원(실제 인원 수) 균형 — 성별 균형을 유지하며 많은 반→적은 반으로 이동
   (function rebalanceRawCount(){
-    const maxIter=pool.length+5;
+    const maxIter=pool.length*2+5;
     for(let iter=0;iter<maxIter;iter++){
       const counts=classes.map(c=>({c,n:(assignments[c.id]||[]).length}));
       const most=counts.reduce((a,b)=>b.n>a.n?b:a);
@@ -1778,7 +1810,13 @@ function autoAssign(onlyNew){
         .map(id=>students.find(s=>s.id===id))
         .filter(s=>s&&!rules.some(r=>r.idA===s.id||r.idB===s.id));
       if(!candidates.length)break;
-      candidates.sort((a,b)=>a.tags.length-b.tags.length);
+      // 이동해도 most반 성비가 덜 나빠지는 학생 우선 (이동 후 least반 성비도 고려)
+      candidates.sort((a,b)=>{
+        // 이동 후 least반의 해당 성별 수 — 적게 늘수록 좋음(이미 많으면 패널티)
+        const ga=genderCount(least.c.id,a.gender),gb=genderCount(least.c.id,b.gender);
+        if(ga!==gb)return ga-gb;
+        return a.tags.length-b.tags.length;
+      });
       const moveStudent=candidates[0];
       assignments[most.c.id]=assignments[most.c.id].filter(id=>id!==moveStudent.id);
       assignments[least.c.id]=assignments[least.c.id]||[];
@@ -1786,7 +1824,7 @@ function autoAssign(onlyNew){
     }
   })();
 
-  // 2순위: 특수교육(도움) 분산 — 이미 맞춘 전체 인원은 그대로 두고, 반끼리 학생 1:1 맞교환으로만 개선
+  // 2순위: 특수교육(도움) 분산 — 전체 인원은 그대로, 1:1 맞교환 시 성별 일치 우선
   (function rebalanceHelpBySwap(){
     const maxIter=pool.length+5;
     for(let iter=0;iter<maxIter;iter++){
@@ -1802,9 +1840,65 @@ function autoAssign(onlyNew){
         .map(id=>students.find(s=>s.id===id))
         .filter(s=>s&&!s.tags.includes('도움')&&!rules.some(r=>r.idA===s.id||r.idB===s.id));
       if(!leastPool.length)break;
+      // 성별이 같은 학생과 교환 → 교환 후 양쪽 성비 변화 없음
       const swapCandidate=leastPool.find(s=>s.gender===helpCandidate.gender)||leastPool[0];
       assignments[most.c.id]=assignments[most.c.id].filter(id=>id!==helpCandidate.id).concat(swapCandidate.id);
       assignments[least.c.id]=assignments[least.c.id].filter(id=>id!==swapCandidate.id).concat(helpCandidate.id);
+    }
+  })();
+
+  // 3순위: 성별 균형 — 전체 인원·도움 분포는 그대로, 1:1 맞교환으로 성비 개선
+  (function rebalanceGenderBySwap(){
+    const maxIter=pool.length*2+5;
+    let improved=true;
+    while(improved){
+      improved=false;
+      // 각 반의 남·여 수
+      const maleCounts=classes.map(c=>({c,n:genderCount(c.id,'남')}));
+      const femaleCounts=classes.map(c=>({c,n:genderCount(c.id,'여')}));
+      // 남학생 과다 반 vs 부족 반
+      const mostMale=maleCounts.reduce((a,b)=>b.n>a.n?b:a);
+      const leastMale=maleCounts.reduce((a,b)=>b.n<a.n?b:a);
+      if(mostMale.n-leastMale.n>=2&&mostMale.c.id!==leastMale.c.id){
+        // mostMale반의 남학생 ↔ leastMale반의 여학생 교환
+        const maleCand=(assignments[mostMale.c.id]||[])
+          .map(id=>students.find(s=>s.id===id))
+          .filter(s=>s&&s.gender==='남'&&!rules.some(r=>r.idA===s.id||r.idB===s.id)&&!s.tags.includes('도움'));
+        const femaleCand=(assignments[leastMale.c.id]||[])
+          .map(id=>students.find(s=>s.id===id))
+          .filter(s=>s&&s.gender==='여'&&!rules.some(r=>r.idA===s.id||r.idB===s.id)&&!s.tags.includes('도움'));
+        if(maleCand.length&&femaleCand.length){
+          // 태그 적은 학생 우선(특성 배분 영향 최소화)
+          maleCand.sort((a,b)=>a.tags.length-b.tags.length);
+          femaleCand.sort((a,b)=>a.tags.length-b.tags.length);
+          const mS=maleCand[0],fS=femaleCand[0];
+          assignments[mostMale.c.id]=assignments[mostMale.c.id].filter(id=>id!==mS.id).concat(fS.id);
+          assignments[leastMale.c.id]=assignments[leastMale.c.id].filter(id=>id!==fS.id).concat(mS.id);
+          improved=true;
+          continue;
+        }
+      }
+      // 여학생 과다 반 vs 부족 반
+      const mostFemale=femaleCounts.reduce((a,b)=>b.n>a.n?b:a);
+      const leastFemale=femaleCounts.reduce((a,b)=>b.n<a.n?b:a);
+      if(mostFemale.n-leastFemale.n>=2&&mostFemale.c.id!==leastFemale.c.id){
+        const femaleCand2=(assignments[mostFemale.c.id]||[])
+          .map(id=>students.find(s=>s.id===id))
+          .filter(s=>s&&s.gender==='여'&&!rules.some(r=>r.idA===s.id||r.idB===s.id)&&!s.tags.includes('도움'));
+        const maleCand2=(assignments[leastFemale.c.id]||[])
+          .map(id=>students.find(s=>s.id===id))
+          .filter(s=>s&&s.gender==='남'&&!rules.some(r=>r.idA===s.id||r.idB===s.id)&&!s.tags.includes('도움'));
+        if(femaleCand2.length&&maleCand2.length){
+          femaleCand2.sort((a,b)=>a.tags.length-b.tags.length);
+          maleCand2.sort((a,b)=>a.tags.length-b.tags.length);
+          const fS2=femaleCand2[0],mS2=maleCand2[0];
+          assignments[mostFemale.c.id]=assignments[mostFemale.c.id].filter(id=>id!==fS2.id).concat(mS2.id);
+          assignments[leastFemale.c.id]=assignments[leastFemale.c.id].filter(id=>id!==mS2.id).concat(fS2.id);
+          improved=true;
+          continue;
+        }
+      }
+      break;
     }
   })();
 
@@ -1816,7 +1910,7 @@ function autoAssign(onlyNew){
       const t=[...classes].filter(c=>c.id!==clsA.id).sort((a,b)=>classWeight(a.id)-classWeight(b.id))[0];
       if(t){
         assignments[clsA.id]=assignments[clsA.id].filter(id=>id!==r.idB);assignments[t.id].push(r.idB);
-        // 인원수 유지를 위해 t반에서 규칙에 안 걸린 학생 1명을 clsA로 맞바꿈
+        // 인원수 유지를 위해 t반에서 규칙에 안 걸린 학생 1명을 clsA로 맞바꿈 (같은 성별 우선)
         const swapPool=(assignments[t.id]||[]).map(id=>students.find(s=>s.id===id)).filter(s=>s&&s.id!==r.idB&&!rules.some(rr=>rr.idA===s.id||rr.idB===s.id));
         const swapBack=swapPool.find(s=>s.gender===sB.gender)||swapPool[0];
         if(swapBack){assignments[t.id]=assignments[t.id].filter(id=>id!==swapBack.id);assignments[clsA.id].push(swapBack.id);}
@@ -1824,14 +1918,14 @@ function autoAssign(onlyNew){
     }
     if(r.type==='동반'&&clsA.id!==clsB.id){
       assignments[clsB.id]=assignments[clsB.id].filter(id=>id!==r.idB);assignments[clsA.id].push(r.idB);
-      // 인원수 유지를 위해 clsA에서 규칙에 안 걸린 학생 1명을 clsB로 맞바꿈
+      // 인원수 유지를 위해 clsA에서 규칙에 안 걸린 학생 1명을 clsB로 맞바꿈 (같은 성별 우선)
       const swapPool=(assignments[clsA.id]||[]).map(id=>students.find(s=>s.id===id)).filter(s=>s&&s.id!==r.idB&&!rules.some(rr=>rr.idA===s.id||rr.idB===s.id));
       const swapBack=swapPool.find(s=>s.gender===sB.gender)||swapPool[0];
       if(swapBack){assignments[clsA.id]=assignments[clsA.id].filter(id=>id!==swapBack.id);assignments[clsB.id].push(swapBack.id);}
     }
   });
 
-  // 안전망: 규칙 적용으로 다시 어긋났을 수 있는 전체 인원을 한 번 더 점검(규칙 걸린 학생은 건드리지 않음)
+  // 안전망: 규칙 적용 후 전체 인원 재점검 → 성별 보존하며 이동
   (function finalRawCountCheck(){
     const maxIter=pool.length+5;
     for(let iter=0;iter<maxIter;iter++){
@@ -1843,7 +1937,12 @@ function autoAssign(onlyNew){
         .map(id=>students.find(s=>s.id===id))
         .filter(s=>s&&!rules.some(r=>r.idA===s.id||r.idB===s.id));
       if(!candidates.length)break;
-      candidates.sort((a,b)=>a.tags.length-b.tags.length);
+      // least반의 해당 성별이 적은 학생 우선 이동 (성비 개선 효과)
+      candidates.sort((a,b)=>{
+        const ga=genderCount(least.c.id,a.gender),gb=genderCount(least.c.id,b.gender);
+        if(ga!==gb)return ga-gb;
+        return a.tags.length-b.tags.length;
+      });
       const moveStudent=candidates[0];
       assignments[most.c.id]=assignments[most.c.id].filter(id=>id!==moveStudent.id);
       assignments[least.c.id]=assignments[least.c.id]||[];

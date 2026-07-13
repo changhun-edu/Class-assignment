@@ -327,6 +327,12 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
         <div class="card">
           <div class="card-title">📂 엑셀 업로드</div>
           <div id="upload-version-banner" style="display:none;margin-bottom:10px;padding:8px 12px;border-radius:var(--r);font-size:.82rem;background:var(--amber-light);color:var(--amber);border:1px solid #fde68a"></div>
+          <!-- 업로드된 파일 표시 (등록 완료 후) -->
+          <div id="uploaded-file-info" style="display:none;margin-bottom:10px;padding:10px 14px;border-radius:var(--r);background:var(--green-light);border:1px solid #86efac;display:none;align-items:center;gap:10px">
+            <span style="font-size:1.1rem">📄</span>
+            <span id="uploaded-file-name" style="flex:1;font-size:.87rem;font-weight:600;color:var(--green);overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+            <button class="btn btn-danger btn-sm" onclick="removeUploadedFile()" title="업로드된 파일 삭제 및 학생 데이터 초기화">🗑 파일 삭제</button>
+          </div>
           <div id="excel-dropzone"
             ondragover="event.preventDefault();this.classList.add('drag-hover')"
             ondragleave="this.classList.remove('drag-hover')"
@@ -360,6 +366,9 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
                 <button class="btn btn-primary btn-sm" onclick="autoAssign(true)">➕ 새로 추가된 학생만 배정</button>
                 <button class="btn btn-secondary btn-sm" onclick="confirmFullReassign()">🔄 전체 다시 배치</button>
                 <button class="btn btn-secondary btn-sm" onclick="switchTab('assign')">✋ 지금 배치대로 두기</button>
+              </div>
+              <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--border)">
+                <button class="btn btn-danger btn-sm" onclick="removeUploadedFile()">🗑 업로드 취소 · 학생 데이터 삭제</button>
               </div>
             </div>
           </div>
@@ -1263,7 +1272,9 @@ function handleExcelFile(file){
   reader.readAsArrayBuffer(file);
 }
 function studentKey(s){return `${s.grade}-${s.cls}-${s.num}-${s.name}`;}
+let lastUploadedFileName='';
 function showExcelPreview(filename,errors){
+  lastUploadedFileName=filename;
   const titleEl=document.getElementById('upload-result-title');if(titleEl)titleEl.textContent='📋 업로드 결과';
   const TAG_ICON_MAP={};allTagDefs().forEach(t=>{TAG_ICON_MAP[t.key]=t.icon;});
   const existingKeys=new Set(students.map(studentKey));
@@ -1351,6 +1362,10 @@ function confirmExcelImport(){
     document.getElementById('duplicate-warning').style.display='none';
   }
   document.getElementById('post-import-actions').style.display='block';
+  // 업로드된 파일 정보 배너 표시
+  const fileInfoEl=document.getElementById('uploaded-file-info');
+  const fileNameEl=document.getElementById('uploaded-file-name');
+  if(fileInfoEl&&fileNameEl){fileNameEl.textContent=lastUploadedFileName;fileInfoEl.style.display='flex';}
   if(!hasExistingAssignment){
     document.getElementById('post-import-msg').textContent='✅ 등록 완료 — 잠시 후 자동으로 배정 작업 화면으로 이동하며 균형 배치가 실행됩니다...';
     document.getElementById('post-import-choice').style.display='none';
@@ -1372,6 +1387,36 @@ function cancelExcelImport(){
   const titleEl=document.getElementById('upload-result-title');if(titleEl)titleEl.textContent='📋 인식 준비';
   updateUploadEmptyStateSummary();
 }
+function removeUploadedFile(){
+  if(blockIfFinalized())return;
+  const hasStudents=students.length>0;
+  const msg=hasStudents
+    ?`업로드된 파일(${lastUploadedFileName||'학생 명단'})과 등록된 학생 ${students.length}명을 모두 삭제합니다.\n배정 결과도 초기화됩니다. 계속하시겠습니까?`
+    :'업로드 내용을 삭제하고 초기 상태로 되돌립니다. 계속하시겠습니까?';
+  if(!confirm(msg))return;
+  // 학생·배정 데이터 초기화
+  const snap=snapshotState();
+  students=[];unassigned=[];
+  classes.forEach(c=>{assignments[c.id]=[];});
+  rules=rules.filter(r=>r.source!=='excel'); // 엑셀로 인식된 규칙만 제거
+  lastUploadedFileName='';
+  // UI 초기화
+  pendingExcelStudents=[];
+  document.getElementById('excel-preview').style.display='none';
+  document.getElementById('post-import-actions').style.display='none';
+  document.getElementById('upload-empty').style.display='block';
+  document.getElementById('excel-dropzone').style.display='block';
+  document.querySelector('#excel-dropzone + button').style.display='block';
+  document.getElementById('excel-file-input').value='';
+  const fileInfoEl=document.getElementById('uploaded-file-info');
+  if(fileInfoEl)fileInfoEl.style.display='none';
+  const titleEl=document.getElementById('upload-result-title');if(titleEl)titleEl.textContent='📋 인식 준비';
+  renderStudentList();updateBadges();renderAssignIfActive();renderRulesList();
+  markDirty();
+  showUndoToast('🗑 업로드 파일 삭제 완료',()=>{restoreState(snap);showToast('↩ 복구되었습니다');});
+  updateUploadEmptyStateSummary();
+}
+window.removeUploadedFile=removeUploadedFile;
 async function downloadSampleExcel(){
   const wb=new ExcelJS.Workbook();
   wb.calcProperties.fullCalcOnLoad=true; // 통계 수식이 열자마자 재계산되도록 (안 그러면 0으로 보일 수 있음)
@@ -2578,6 +2623,8 @@ function resetAppState(){
   const uploadEmpty=document.getElementById('upload-empty');if(uploadEmpty)uploadEmpty.style.display='block';
   const dropzone=document.getElementById('excel-dropzone');if(dropzone)dropzone.style.display='block';
   const uploadBtn=document.querySelector('#excel-dropzone + button');if(uploadBtn)uploadBtn.style.display='block';
+  const fileInfoEl=document.getElementById('uploaded-file-info');if(fileInfoEl)fileInfoEl.style.display='none';
+  lastUploadedFileName='';
   const postImport=document.getElementById('post-import-actions');if(postImport)postImport.style.display='none';
 
   // 화면 다시 그리기 (초기 로드와 동일한 순서)

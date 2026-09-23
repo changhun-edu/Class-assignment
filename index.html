@@ -274,6 +274,27 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
 .flex-row{display:flex;gap:8px;align-items:center}
 .flex-row-between{display:flex;justify-content:space-between;align-items:center}
 .mt-4{margin-top:4px}.mt-12{margin-top:12px}.mt-16{margin-top:16px}
+
+/* 오픈소스 라이선스 고지 */
+#app-footer{display:flex;justify-content:flex-end;align-items:center;gap:12px}
+.oss-btn{background:none;border:1px solid var(--border);border-radius:999px;padding:1px 9px;font-size:.7rem;font-family:inherit;color:var(--text-muted);cursor:pointer;line-height:1.6}
+.oss-btn:hover{color:var(--primary);border-color:var(--primary);background:var(--primary-light)}
+.oss-modal{width:780px}
+.oss-p{font-size:.85rem;color:var(--text-sub);line-height:1.7;margin-bottom:6px}
+.oss-h{font-size:.9rem;margin:18px 0 8px}
+.oss-h small{font-weight:400;color:var(--text-muted);font-size:.75rem}
+.oss-scroll{overflow-x:auto;border:1px solid var(--border);border-radius:var(--r)}
+.oss-bundled{max-height:240px;overflow-y:auto}
+.oss-table{width:100%;border-collapse:collapse;font-size:.78rem}
+.oss-table th,.oss-table td{padding:6px 9px;border-bottom:1px solid var(--border);text-align:left;vertical-align:top}
+.oss-table th{background:var(--surface2);font-weight:700;position:sticky;top:0}
+.oss-table tr:last-child td{border-bottom:none}
+.oss-grp td{background:var(--primary-light);color:var(--primary-dark);font-weight:700}
+.oss-lic{display:inline-block;padding:1px 7px;border-radius:999px;background:var(--surface2);font-weight:700;white-space:nowrap}
+.oss-txt{border:1px solid var(--border);border-radius:var(--r);margin-bottom:6px}
+.oss-txt summary{cursor:pointer;padding:8px 12px;font-size:.84rem;font-weight:700}
+.oss-txt summary span{font-weight:400;color:var(--text-muted)}
+.oss-txt pre{margin:0;padding:12px;max-height:260px;overflow:auto;background:var(--surface2);border-top:1px solid var(--border);font-family:Consolas,monospace;font-size:.72rem;line-height:1.5;white-space:pre-wrap;word-break:break-word}
 </style>
 </head>
 <body>
@@ -662,7 +683,307 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
     </div>
 
   </div>
-  <div id="app-footer">만든이 2026 최창훈</div>
+  <div id="app-footer"><button type="button" class="oss-btn" onclick="openOssModal()">ⓘ 오픈소스 라이선스</button><span>만든이 2026 최창훈</span></div>
+</div>
+<!-- 오픈소스 라이선스 고지 -->
+<div class="modal-overlay" id="oss-modal" style="display:none" onclick="if(event.target===this)closeOssModal()" role="dialog" aria-modal="true" aria-labelledby="oss-title">
+  <div class="modal oss-modal">
+    <div class="modal-title"><span id="oss-title">ⓘ 오픈소스 라이선스</span><span class="modal-close" onclick="closeOssModal()" aria-label="닫기">✕</span></div>
+    <p class="oss-p">「스마트 반편성」의 아이디어와 화면 구성·안내 문구는 만든이(최창훈)의 창작물입니다. 엑셀 파일을 읽고 만드는 기능에는 아래 오픈소스 소프트웨어를 사용하며, 각 라이선스가 정한 대로 저작권 표시와 라이선스 전문을 함께 밝힙니다.</p>
+    <h4 class="oss-h">1. 사용한 라이브러리 <small>(cdnjs.cloudflare.com에서 불러옴, 원본 수정 없음)</small></h4>
+    <div class="oss-scroll"><table class="oss-table"><thead><tr><th>이름</th><th>버전</th><th>라이선스</th><th>저작권자</th><th>용도</th></tr></thead><tbody><tr><td><b>ExcelJS</b></td><td>4.3.0</td><td><span class="oss-lic">MIT</span></td><td>Copyright (c) 2014-2019 Guyon Roche</td><td>엑셀 서식·결과 파일 만들기</td></tr><tr><td><b>SheetJS Community Edition (xlsx)</b></td><td>0.18.5</td><td><span class="oss-lic">Apache-2.0</span></td><td>Copyright (C) 2012-present SheetJS LLC</td><td>업로드한 엑셀 파일 읽기</td></tr></tbody></table></div>
+    <h4 class="oss-h">2. ExcelJS 브라우저 배포본에 함께 포함된 구성요소</h4>
+    <div class="oss-scroll oss-bundled"><table class="oss-table"><thead><tr><th>구성요소</th><th>저작권자</th></tr></thead><tbody><tr class="oss-grp"><td colspan="2">MIT</td></tr><tr><td>fast-csv, @fast-csv/format, @fast-csv/parse</td><td>C2FO</td></tr><tr><td>JSZip (MIT 또는 GPLv3 이중 라이선스 중 MIT 선택)</td><td>Stuart Knightley, David Duponchel, Franz Buchinger, António Afonso</td></tr><tr><td>pako (일부 zlib License, 아래 참조)</td><td>Vitaly Puzrin, Andrei Tuputcyn</td></tr><tr><td>dayjs</td><td>iamkun</td></tr><tr><td>uuid</td><td>Robert Kieffer and other contributors</td></tr><tr><td>core-js</td><td>Denis Pushkarev</td></tr><tr><td>regenerator-runtime</td><td>Facebook, Inc.</td></tr><tr><td>buffer, safe-buffer</td><td>Feross Aboukhadijeh and contributors</td></tr><tr><td>base64-js</td><td>Jameson Little</td></tr><tr><td>readable-stream, string_decoder</td><td>Node.js contributors</td></tr><tr><td>events, util</td><td>Joyent, Inc. and other Node contributors</td></tr><tr><td>process</td><td>Roman Shtylman</td></tr><tr><td>process-nextick-args, public-encrypt, diffie-hellman</td><td>Calvin Metcalf</td></tr><tr><td>lie</td><td>Calvin Metcalf, Jordan Harband</td></tr><tr><td>immediate</td><td>Barnesandnoble.com llc, Donavon West, Domenic Denicola, Brian Cavalier</td></tr><tr><td>set-immediate-shim</td><td>Sindre Sorhus</td></tr><tr><td>core-util-is</td><td>Isaac Z. Schlueter</td></tr><tr><td>util-deprecate</td><td>Nathan Rajlich</td></tr><tr><td>isarray</td><td>Julian Gruber</td></tr><tr><td>safer-buffer</td><td>Nikita Skovoroda</td></tr><tr><td>xmlchars</td><td>Louis-Dominique Dubeau and contributors</td></tr><tr><td>stream-browserify</td><td>James Halliday</td></tr><tr><td>timers-browserify</td><td>J. Ryan Stinnett</td></tr><tr><td>crypto-browserify</td><td>Dominic Tarr</td></tr><tr><td>lodash.escaperegexp, lodash.groupby, lodash.isboolean, lodash.isequal, lodash.isfunction, lodash.isnil, lodash.isundefined, lodash.uniq</td><td>JS Foundation and other contributors (Dojo Foundation), Jeremy Ashkenas (Underscore.js)</td></tr><tr><td>bn.js, asn1.js, elliptic, hash.js, hmac-drbg, des.js, brorand, miller-rabin, minimalistic-crypto-utils</td><td>Fedor Indutny</td></tr><tr><td>browserify-aes, browserify-cipher, browserify-des, browserify-rsa, create-ecdh</td><td>Calvin Metcalf, Fedor Indutny &amp; contributors</td></tr><tr><td>cipher-base, create-hash, create-hmac, evp_bytestokey, randombytes, randomfill, ripemd160</td><td>crypto-browserify contributors</td></tr><tr><td>hash-base, md5.js</td><td>Kirill Fomichev</td></tr><tr><td>pbkdf2, buffer-xor</td><td>Daniel Cousens</td></tr><tr><td>sha.js (일부 BSD-3-Clause)</td><td>sha.js contributors</td></tr><tr class="oss-grp"><td colspan="2">ISC</td></tr><tr><td>saxes</td><td>Louis-Dominique Dubeau</td></tr><tr><td>inherits</td><td>Isaac Z. Schlueter</td></tr><tr><td>browserify-sign</td><td>Calvin Metcalf and browserify-sign contributors</td></tr><tr><td>parse-asn1</td><td>crypto-browserify contributors</td></tr><tr><td>minimalistic-assert</td><td>Calvin Metcalf</td></tr><tr class="oss-grp"><td colspan="2">BSD-3-Clause</td></tr><tr><td>ieee754</td><td>Fair Oaks Labs, Inc.</td></tr><tr><td>sha.js 중 SHA 구현 일부</td><td>Paul Johnston &amp; Contributors</td></tr><tr class="oss-grp"><td colspan="2">Zlib</td></tr><tr><td>pako 중 zlib 이식 부분</td><td>Jean-loup Gailly, Mark Adler, Vitaly Puzrin, Andrey Tupitsin</td></tr></tbody></table></div>
+    <h4 class="oss-h">3. 라이선스 전문</h4>
+    <details class="oss-txt"><summary>Apache License 2.0 <span>— SheetJS Community Edition</span></summary><pre>Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      &quot;License&quot; shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      &quot;Licensor&quot; shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+
+      &quot;Legal Entity&quot; shall mean the union of the acting entity and all
+      other entities that control, are controlled by, or are under common
+      control with that entity. For the purposes of this definition,
+      &quot;control&quot; means (i) the power, direct or indirect, to cause the
+      direction or management of such entity, whether by contract or
+      otherwise, or (ii) ownership of fifty percent (50%) or more of the
+      outstanding shares, or (iii) beneficial ownership of such entity.
+
+      &quot;You&quot; (or &quot;Your&quot;) shall mean an individual or Legal Entity
+      exercising permissions granted by this License.
+
+      &quot;Source&quot; form shall mean the preferred form for making modifications,
+      including but not limited to software source code, documentation
+      source, and configuration files.
+
+      &quot;Object&quot; form shall mean any form resulting from mechanical
+      transformation or translation of a Source form, including but
+      not limited to compiled object code, generated documentation,
+      and conversions to other media types.
+
+      &quot;Work&quot; shall mean the work of authorship, whether in Source or
+      Object form, made available under the License, as indicated by a
+      copyright notice that is included in or attached to the work
+      (an example is provided in the Appendix below).
+
+      &quot;Derivative Works&quot; shall mean any work, whether in Source or Object
+      form, that is based on (or derived from) the Work and for which the
+      editorial revisions, annotations, elaborations, or other modifications
+      represent, as a whole, an original work of authorship. For the purposes
+      of this License, Derivative Works shall not include works that remain
+      separable from, or merely link (or bind by name) to the interfaces of,
+      the Work and Derivative Works thereof.
+
+      &quot;Contribution&quot; shall mean any work of authorship, including
+      the original version of the Work and any modifications or additions
+      to that Work or Derivative Works thereof, that is intentionally
+      submitted to Licensor for inclusion in the Work by the copyright owner
+      or by an individual or Legal Entity authorized to submit on behalf of
+      the copyright owner. For the purposes of this definition, &quot;submitted&quot;
+      means any form of electronic, verbal, or written communication sent
+      to the Licensor or its representatives, including but not limited to
+      communication on electronic mailing lists, source code control systems,
+      and issue tracking systems that are managed by, or on behalf of, the
+      Licensor for the purpose of discussing and improving the Work, but
+      excluding communication that is conspicuously marked or otherwise
+      designated in writing by the copyright owner as &quot;Not a Contribution.&quot;
+
+      &quot;Contributor&quot; shall mean Licensor and any individual or Legal Entity
+      on behalf of whom a Contribution has been received by Licensor and
+      subsequently incorporated within the Work.
+
+   2. Grant of Copyright License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      copyright license to reproduce, prepare Derivative Works of,
+      publicly display, publicly perform, sublicense, and distribute the
+      Work and such Derivative Works in Source or Object form.
+
+   3. Grant of Patent License. Subject to the terms and conditions of
+      this License, each Contributor hereby grants to You a perpetual,
+      worldwide, non-exclusive, no-charge, royalty-free, irrevocable
+      (except as stated in this section) patent license to make, have made,
+      use, offer to sell, sell, import, and otherwise transfer the Work,
+      where such license applies only to those patent claims licensable
+      by such Contributor that are necessarily infringed by their
+      Contribution(s) alone or by combination of their Contribution(s)
+      with the Work to which such Contribution(s) was submitted. If You
+      institute patent litigation against any entity (including a
+      cross-claim or counterclaim in a lawsuit) alleging that the Work
+      or a Contribution incorporated within the Work constitutes direct
+      or contributory patent infringement, then any patent licenses
+      granted to You under this License for that Work shall terminate
+      as of the date such litigation is filed.
+
+   4. Redistribution. You may reproduce and distribute copies of the
+      Work or Derivative Works thereof in any medium, with or without
+      modifications, and in Source or Object form, provided that You
+      meet the following conditions:
+
+      (a) You must give any other recipients of the Work or
+          Derivative Works a copy of this License; and
+
+      (b) You must cause any modified files to carry prominent notices
+          stating that You changed the files; and
+
+      (c) You must retain, in the Source form of any Derivative Works
+          that You distribute, all copyright, patent, trademark, and
+          attribution notices from the Source form of the Work,
+          excluding those notices that do not pertain to any part of
+          the Derivative Works; and
+
+      (d) If the Work includes a &quot;NOTICE&quot; text file as part of its
+          distribution, then any Derivative Works that You distribute must
+          include a readable copy of the attribution notices contained
+          within such NOTICE file, excluding those notices that do not
+          pertain to any part of the Derivative Works, in at least one
+          of the following places: within a NOTICE text file distributed
+          as part of the Derivative Works; within the Source form or
+          documentation, if provided along with the Derivative Works; or,
+          within a display generated by the Derivative Works, if and
+          wherever such third-party notices normally appear. The contents
+          of the NOTICE file are for informational purposes only and
+          do not modify the License. You may add Your own attribution
+          notices within Derivative Works that You distribute, alongside
+          or as an addendum to the NOTICE text from the Work, provided
+          that such additional attribution notices cannot be construed
+          as modifying the License.
+
+      You may add Your own copyright statement to Your modifications and
+      may provide additional or different license terms and conditions
+      for use, reproduction, or distribution of Your modifications, or
+      for any such Derivative Works as a whole, provided Your use,
+      reproduction, and distribution of the Work otherwise complies with
+      the conditions stated in this License.
+
+   5. Submission of Contributions. Unless You explicitly state otherwise,
+      any Contribution intentionally submitted for inclusion in the Work
+      by You to the Licensor shall be under the terms and conditions of
+      this License, without any additional terms or conditions.
+      Notwithstanding the above, nothing herein shall supersede or modify
+      the terms of any separate license agreement you may have executed
+      with Licensor regarding such Contributions.
+
+   6. Trademarks. This License does not grant permission to use the trade
+      names, trademarks, service marks, or product names of the Licensor,
+      except as required for reasonable and customary use in describing the
+      origin of the Work and reproducing the content of the NOTICE file.
+
+   7. Disclaimer of Warranty. Unless required by applicable law or
+      agreed to in writing, Licensor provides the Work (and each
+      Contributor provides its Contributions) on an &quot;AS IS&quot; BASIS,
+      WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+      implied, including, without limitation, any warranties or conditions
+      of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+      PARTICULAR PURPOSE. You are solely responsible for determining the
+      appropriateness of using or redistributing the Work and assume any
+      risks associated with Your exercise of permissions under this License.
+
+   8. Limitation of Liability. In no event and under no legal theory,
+      whether in tort (including negligence), contract, or otherwise,
+      unless required by applicable law (such as deliberate and grossly
+      negligent acts) or agreed to in writing, shall any Contributor be
+      liable to You for damages, including any direct, indirect, special,
+      incidental, or consequential damages of any character arising as a
+      result of this License or out of the use or inability to use the
+      Work (including but not limited to damages for loss of goodwill,
+      work stoppage, computer failure or malfunction, or any and all
+      other commercial damages or losses), even if such Contributor
+      has been advised of the possibility of such damages.
+
+   9. Accepting Warranty or Additional Liability. While redistributing
+      the Work or Derivative Works thereof, You may choose to offer,
+      and charge a fee for, acceptance of support, warranty, indemnity,
+      or other liability obligations and/or rights consistent with this
+      License. However, in accepting such obligations, You may act only
+      on Your own behalf and on Your sole responsibility, not on behalf
+      of any other Contributor, and only if You agree to indemnify,
+      defend, and hold each Contributor harmless for any liability
+      incurred by, or claims asserted against, such Contributor by reason
+      of your accepting any such warranty or additional liability.
+
+   END OF TERMS AND CONDITIONS
+
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets &quot;{}&quot;
+      replaced with your own identifying information. (Don&#x27;t include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same &quot;printed page&quot; as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright (C) 2012-present   SheetJS LLC
+
+   Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.</pre></details><details class="oss-txt"><summary>MIT License <span>— ExcelJS 및 번들 구성요소</span></summary><pre>MIT License
+
+Copyright (c) &lt;year&gt; &lt;copyright holders&gt;
+(각 구성요소의 저작권자는 위 목록을 참조하십시오.)
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the &quot;Software&quot;), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED &quot;AS IS&quot;, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.</pre></details><details class="oss-txt"><summary>BSD 3-Clause License <span>— ieee754, sha.js 일부</span></summary><pre>BSD 3-Clause License
+
+Copyright 2008 Fair Oaks Labs, Inc. (ieee754)
+Copyright (c) 1998 - 2009, Paul Johnston &amp; Contributors (sha.js 일부)
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+   may be used to endorse or promote products derived from this software
+   without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS &quot;AS IS&quot;
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.</pre></details><details class="oss-txt"><summary>ISC License <span>— saxes, inherits 등</span></summary><pre>ISC License
+
+Copyright (c) &lt;year&gt; &lt;copyright holders&gt;
+(각 구성요소의 저작권자는 위 목록을 참조하십시오.)
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED &quot;AS IS&quot; AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH
+REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND
+FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT,
+INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM
+LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR
+OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
+PERFORMANCE OF THIS SOFTWARE.</pre></details><details class="oss-txt"><summary>zlib License <span>— pako 일부</span></summary><pre>zlib License
+
+(C) 1995-2013 Jean-loup Gailly and Mark Adler
+(C) 2014-2017 Vitaly Puzrin and Andrey Tupitsin
+
+This software is provided &#x27;as-is&#x27;, without any express or implied
+warranty. In no event will the authors be held liable for any damages
+arising from the use of this software.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+   claim that you wrote the original software. If you use this software
+   in a product, an acknowledgment in the product documentation would be
+   appreciated but is not required.
+2. Altered source versions must be plainly marked as such, and must not be
+   misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.</pre></details>
+    <h4 class="oss-h">4. 글꼴·이모지</h4>
+    <p class="oss-p">글꼴은 사용자 컴퓨터에 설치된 시스템 글꼴(맑은 고딕, Apple SD Gothic Neo 등)을 그대로 쓰며, 글꼴 파일을 이 사이트에 넣거나 배포하지 않습니다. 화면의 이모지는 이미지가 아닌 유니코드 문자로, 운영체제의 기본 이모지 글꼴로 표시됩니다.</p>
+    <div class="modal-footer"><button class="btn btn-primary" onclick="closeOssModal()">닫기</button></div>
+  </div>
 </div>
 <div class="modal-overlay" id="edit-modal" style="display:none" onclick="if(event.target===this)closeEditModal()">
   <div class="modal">
@@ -2818,6 +3139,11 @@ if(restored){
   }
   startTour();
 }
+
+// ── 오픈소스 라이선스 고지 ──
+function openOssModal(){document.getElementById('oss-modal').style.display='flex';}
+function closeOssModal(){document.getElementById('oss-modal').style.display='none';}
+document.addEventListener('keydown',function(ev){if(ev.key==='Escape'){const m=document.getElementById('oss-modal');if(m&&m.style.display!=='none')closeOssModal();}});
 </script>
 </body>
 </html>

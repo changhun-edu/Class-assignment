@@ -1112,6 +1112,7 @@ function onDoumWeightChange(){
   updateBadges();
 }
 let pendingExcelStudents=[];
+let lastAddedIds=new Set(); // 최근 추가(업로드·직접입력)되어 임시 배치만 된 학생 — "새 학생만 배정"의 대상
 let assignHistory=[]; // ⑦ Undo용 배정 스냅샷 스택 (최대 5개)
 
 const TAG_COLORS={'우수':{bg:'#fef9c3',color:'#854d0e'},'부진':{bg:'#fee2e2',color:'#991b1b'},'지도':{bg:'#ede9fe',color:'#5b21b6'},'수급':{bg:'#ffedd5',color:'#9a3412'},'다문화':{bg:'#e0f2fe',color:'#075985'},'도움':{bg:'#dcfce7',color:'#14532d'}};
@@ -1438,7 +1439,7 @@ function addStudent(){
   if(!classes.length){showToast('⚠️ 먼저 ① 설정하기에서 반을 설정해주세요','warn');return;}
   const s={id:uid(),grade:+grade,cls:+cls,num:num?+num:0,name,gender,tags:[...activeTags],note};
   students.push(s);unassigned.push(s.id);
-  quickAssignStudentToClass(s.id);
+  quickAssignStudentToClass(s.id);lastAddedIds.add(s.id);
   document.getElementById('inp-name').value='';
   document.getElementById('inp-num').value='';
   document.getElementById('inp-note').value='';
@@ -1638,9 +1639,17 @@ function resolveRuleReferences(newStudents){
     [['_sepRaw','분리'],['_pairRaw','동반']].forEach(([prop,type])=>{
       const raw=s[prop];if(!raw)return;
       const parsed=parseTarget(raw);
-      if(!parsed){warnings.push(`${s.name}: "${raw}" 형식을 인식하지 못했습니다 (예: 2-15 박영희)`);return;}
-      const target=students.find(t=>t.grade===s.grade&&t.cls===parsed.cls&&t.num===parsed.num);
-      if(!target){warnings.push(`${s.name}: 대상 학생(${parsed.cls}반 ${parsed.num}번)을 찾지 못했습니다`);return;}
+      let target=null;
+      if(parsed){
+        target=students.find(t=>t.grade===s.grade&&t.cls===parsed.cls&&t.num===parsed.num);
+        if(!target){warnings.push(`${s.name}: 대상 학생(${parsed.cls}반 ${parsed.num}번)을 찾지 못했습니다`);return;}
+      }else{
+        // "반-번호" 없이 이름만 적은 경우: 같은 학년 안에서 이름이 유일하면 인식
+        const byName=students.filter(t=>t.grade===s.grade&&t.name===raw&&t.id!==s.id);
+        if(byName.length===1)target=byName[0];
+        else if(byName.length>1){warnings.push(`${s.name}: "${raw}" 이름이 ${byName.length}명 있어 구분할 수 없습니다. "반-번호 이름" 형식으로 적어주세요`);return;}
+        else{warnings.push(`${s.name}: "${raw}" 형식을 인식하지 못했습니다 (예: 2-15 박영희)`);return;}
+      }
       if(target.id===s.id)return;
       if(parsed.name&&target.name!==parsed.name){warnings.push(`${s.name}: "${raw}" — 이름이 실제(${target.name})와 달라 반-번호 기준으로 인식했습니다`);}
       const dup=rules.find(r=>(r.idA===s.id&&r.idB===target.id)||(r.idA===target.id&&r.idB===s.id));
@@ -1667,7 +1676,7 @@ function confirmExcelImport(){
     });
   }
   const hasExistingAssignment=classes.some(c=>(assignments[c.id]||[]).length>0);
-  toAdd.forEach(s=>{students.push(s);unassigned.push(s.id);quickAssignStudentToClass(s.id);});
+  toAdd.forEach(s=>{students.push(s);unassigned.push(s.id);quickAssignStudentToClass(s.id);lastAddedIds.add(s.id);});
   const {recognized,warnings}=resolveRuleReferences(toAdd);
   const count=toAdd.length,skipped=pendingExcelStudents.length-toAdd.length;
   pendingExcelStudents=[];
@@ -1888,7 +1897,7 @@ function bulkImport(){
     const newId=uid();
     students.push({id:newId,grade,cls,num,name,gender,tags,note:''});
     unassigned.push(newId);
-    quickAssignStudentToClass(newId);
+    quickAssignStudentToClass(newId);lastAddedIds.add(newId);
     count++;
   });
   document.getElementById('bulk-input').value='';
@@ -2084,11 +2093,14 @@ function autoAssign(onlyNew){
   const allPool=students.filter(s=>srcGrades.includes(s.grade));
   if(!allPool.length){showToast('⚠️ 배정할 학생이 없습니다','warn');return;}
   const isAssigned=s=>classes.some(c=>(assignments[c.id]||[]).includes(s.id));
-  const newPool=allPool.filter(s=>!isAssigned(s));
+  // 미배정 학생 + 최근 업로드/추가되어 임시 배치된 학생을 "새 학생"으로 취급
+  const newPool=allPool.filter(s=>!isAssigned(s)||lastAddedIds.has(s.id));
   if(onlyNew&&!newPool.length){showToast('⚠️ 새로 추가되어 미배정인 학생이 없습니다','warn');return;}
   const pool=onlyNew?newPool:allPool;
   saveSnapshot(); // ⑦ 배치 전 스냅샷 (반드시 초기화 이전에 저장)
   if(!onlyNew){classes.forEach(c=>{assignments[c.id]=[];});}
+  else{const pid=new Set(pool.map(s=>s.id));classes.forEach(c=>{assignments[c.id]=(assignments[c.id]||[]).filter(id=>!pid.has(id));});}
+  const poolIds=new Set(pool.map(s=>s.id));
 
   function weight(s){return s.tags.includes('도움')?doumWeight:1;}
   function classWeight(cid){return(assignments[cid]||[]).reduce((acc,id)=>{const s=students.find(st=>st.id===id);return acc+(s?weight(s):0);},0);}
@@ -2162,15 +2174,17 @@ function autoAssign(onlyNew){
 
   // ── STEP 1: 동반 그룹 선배치 (그룹 전원을 같은 반에) ──
   // 그룹을 크기 내림차순 정렬 후 인원이 가장 적은 반에 통째로 배치
+  const groupOf=(id)=>pairGroups[find(id)]||[id];
+  const clsOf=(id)=>classes.find(c=>(assignments[c.id]||[]).includes(id));
   pairedGroups.sort((a,b)=>b.length-a.length);
   pairedGroups.forEach(group=>{
-    const members=group.map(id=>allPool.find(s=>s.id===id)).filter(Boolean);
-    // 이 그룹을 넣기에 가장 균형 잡힌 반: 현재 인원 최소 반
-    const tc=[...classes].sort((a,b)=>classWeight(a.id)-classWeight(b.id))[0];
-    members.forEach(s=>{
-      assignments[tc.id]=assignments[tc.id]||[];
-      assignments[tc.id].push(s.id);
-    });
+    const toPlace=group.filter(id=>poolIds.has(id));
+    if(!toPlace.length)return; // 전원 이미 배치됨 (새 학생만 배치 모드)
+    // 이미 배치된 동반 멤버가 있으면 그 반으로, 없으면 가장 가벼운 반으로 통째로 배치
+    const anchor=group.filter(id=>!poolIds.has(id)).map(clsOf).find(Boolean);
+    const tc=anchor||[...classes].sort((a,b)=>classWeight(a.id)-classWeight(b.id))[0];
+    assignments[tc.id]=assignments[tc.id]||[];
+    toPlace.forEach(id=>{if(!assignments[tc.id].includes(id))assignments[tc.id].push(id);});
   });
 
   // ── STEP 2: 도움(특수교육) 학생 배치 (동반 그룹 제외) ──
@@ -2197,34 +2211,43 @@ function autoAssign(onlyNew){
 
   // ── STEP 4: 분리 규칙 처리 (1:1 swap으로 인원수 유지) ──
   // 반복 적용하여 규칙 간 간섭 해소
+  // 분리 대상이 동반 그룹에 속해 있으면 혼자 옮기지 않고 그룹 전체를 함께 이동 (동반 규칙 유지)
+  const unsatisfiable=[];
   let sepChanged=true;
   for(let sepIter=0;sepIter<separateRules.length*2+5&&sepChanged;sepIter++){
     sepChanged=false;
     separateRules.forEach(r=>{
       const sA=allPool.find(s=>s.id===r.idA),sB=allPool.find(s=>s.id===r.idB);if(!sA||!sB)return;
-      const clsA=classes.find(c=>(assignments[c.id]||[]).includes(r.idA));
-      const clsB=classes.find(c=>(assignments[c.id]||[]).includes(r.idB));
+      const clsA=clsOf(r.idA),clsB=clsOf(r.idB);
       if(!clsA||!clsB||clsA.id!==clsB.id)return; // 이미 다른 반이면 OK
-      // sB를 다른 반으로 이동: 동반 그룹 아니고, 규칙 없는 학생과 swap
-      const targets=[...classes].filter(c=>c.id!==clsA.id).sort((a,b)=>classWeight(a.id)-classWeight(b.id));
-      for(const t of targets){
-        const swapPool=(assignments[t.id]||[]).map(id=>students.find(s=>s.id===id))
-          .filter(s=>s&&!pairedIds.has(s.id)&&!separateIds.has(s.id));
-        const swapBack=swapPool.find(s=>s.gender===sB.gender)||swapPool[0];
-        if(swapBack){
-          assignments[clsA.id]=assignments[clsA.id].filter(id=>id!==r.idB);
-          assignments[t.id].push(r.idB);
-          assignments[t.id]=assignments[t.id].filter(id=>id!==swapBack.id);
-          assignments[clsA.id].push(swapBack.id);
-          sepChanged=true;
-          return;
-        }
-        // swap 대상 없으면 단순 이동 (인원 ±1 허용, 후속 rebalance가 교정)
-        assignments[clsA.id]=assignments[clsA.id].filter(id=>id!==r.idB);
-        assignments[t.id].push(r.idB);
-        sepChanged=true;
+      if(find(r.idA)===find(r.idB)){ // 분리 대상끼리 동반 규칙으로 묶여 있음 → 동시 만족 불가
+        if(!unsatisfiable.some(u=>u.includes(sA.name)))unsatisfiable.push(`${sA.name}↔${sB.name}`);
         return;
       }
+      // 이동할 쪽: 동반 그룹이 더 작은 쪽 (그룹 전체 이동)
+      const gA=groupOf(r.idA),gB=groupOf(r.idB);
+      const moveIds=gB.length<=gA.length?gB:gA;
+      const moveSet=new Set(moveIds);
+      const moveStudents=moveIds.map(id=>students.find(s=>s.id===id)).filter(Boolean);
+      // 옮겨간 반에서 다른 분리 규칙을 새로 위반하지 않는 반만 후보로
+      const targets=[...classes].filter(c=>c.id!==clsA.id).filter(t=>!separateRules.some(r2=>{
+        const inMove=[r2.idA,r2.idB].filter(i=>moveSet.has(i));
+        if(inMove.length!==1)return false;
+        const other=r2.idA===inMove[0]?r2.idB:r2.idA;
+        return(assignments[t.id]||[]).includes(other);
+      })).sort((a,b)=>classWeight(a.id)-classWeight(b.id));
+      if(!targets.length)return;
+      const t=targets[0];
+      // 맞교환 대상: 규칙 없는 학생, 성별 일치 우선, 이동 인원만큼
+      const swapPool=(assignments[t.id]||[]).map(id=>students.find(s=>s.id===id)).filter(s=>s&&!ruleLockedIds.has(s.id));
+      const used=new Set(),swapBacks=[];
+      moveStudents.forEach(ms=>{
+        const cand=swapPool.find(s=>!used.has(s.id)&&s.gender===ms.gender)||swapPool.find(s=>!used.has(s.id));
+        if(cand){used.add(cand.id);swapBacks.push(cand);}
+      });
+      moveIds.forEach(id=>{assignments[clsA.id]=assignments[clsA.id].filter(x=>x!==id);assignments[t.id].push(id);});
+      swapBacks.forEach(sb=>{assignments[t.id]=assignments[t.id].filter(x=>x!==sb.id);assignments[clsA.id].push(sb.id);});
+      sepChanged=true;
     });
   }
 
@@ -2316,9 +2339,23 @@ function autoAssign(onlyNew){
     }
   })();
 
+  // ── STEP 8 (안전망): 동반 그룹 최종 검증 — 흩어진 그룹은 다수가 있는 반으로 모음 ──
+  pairedGroups.forEach(group=>{
+    const placed=group.filter(id=>clsOf(id));
+    if(placed.length<2)return;
+    const counts={};placed.forEach(id=>{const c=clsOf(id);counts[c.id]=(counts[c.id]||0)+1;});
+    const bestId=Object.keys(counts).sort((a,b)=>counts[b]-counts[a])[0];
+    placed.forEach(id=>{const c=clsOf(id);if(c.id!==bestId){assignments[c.id]=assignments[c.id].filter(x=>x!==id);assignments[bestId].push(id);}});
+  });
+
+  lastAddedIds=new Set();
   unassigned=allPool.filter(s=>!isAssigned(s)).map(s=>s.id);
   updateBadges();switchTab('assign');renderAssign();renderStatsIfActive();renderStudentPanelIfActive();
   markDirty();
+  if(unsatisfiable.length){
+    showToast(`🚨 분리·동반 규칙이 서로 충돌합니다: ${unsatisfiable.join(', ')} — 규칙을 확인해주세요`,'error');
+    return;
+  }
   showToast(onlyNew?`✅ 새로 추가된 ${pool.length}명을 배치했습니다`:'✅ 자동 배치 완료 — 결과가 마음에 들지 않으면 🎲 재배치를 눌러보세요');
 }
 
@@ -2913,6 +2950,7 @@ function resetAppState(){
   isFinalized=false;
   tagTargets={'우수':3,'부진':3,'지도':3};
   pendingExcelStudents=[];
+  lastAddedIds=new Set();
   assignHistory=[];
   enabledTags=new Set(TAG_DEFS.map(t=>t.key));
   customTagDefs=[];

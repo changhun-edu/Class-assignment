@@ -465,6 +465,14 @@ table.student-table{width:100%;border-collapse:collapse;font-size:.88rem}
             성별은 항상 균등하게 배분됩니다. 체크된 특성은 학생 입력·엑셀 서식/업로드·통계에 반영되고, 옆의 배지대로 자동 배치에 사용됩니다. 체크 해제하면 모든 곳에서 제외됩니다.
           </div>
           <div id="tag-enable-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px"></div>
+          <label id="mix-prev-label" style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;margin-top:10px;border:1px solid var(--border);border-radius:var(--r);background:var(--primary-light);cursor:pointer">
+            <input type="checkbox" id="opt-mix-prev" checked onchange="toggleMixPrev(this.checked,this)" style="margin-top:3px">
+            <span style="flex:1">
+              <span style="font-weight:600;font-size:.88rem">🔀 전년도 반 고르게 섞기</span>
+              <span class="pill" style="background:var(--surface2);color:var(--text-sub);font-size:.72rem;padding:2px 8px;margin-left:6px">최하위 기준</span>
+              <span style="display:block;font-size:.78rem;color:var(--text-sub);margin-top:3px;line-height:1.5">인원·성별·특성·분리·동반 균형을 모두 맞춘 뒤, <b>조건이 똑같은 학생끼리만</b> 맞바꿔 전년도 같은 반 학생이 새 반에 고르게 흩어지도록 다듬습니다. 다른 균형은 바뀌지 않습니다.</span>
+            </span>
+          </label>
           <div class="mt-12" id="custom-tag-form-toggle">
             <button class="btn btn-secondary btn-sm" onclick="showCustomTagForm()">+ 규칙 추가</button>
             <div style="margin-top:8px;font-size:.78rem;color:var(--text-muted)">
@@ -1037,6 +1045,66 @@ let editingId=null, activeTags=new Set(), editTags=new Set();
 let selectedSrcGrades=new Set(['5']);
 let dragStudentId=null;
 let doumWeight=2;
+let mixPrevClass=true; // 전년도 반 고르게 섞기 (최하위 기준)
+function toggleMixPrev(checked,el){
+  if(blockIfFinalized()){if(el)el.checked=!checked;return;}
+  mixPrevClass=checked;
+  updateMixPrevUI();
+  saveSession();
+  showToast(checked?'🔀 전년도 반 고르게 섞기 사용 — 다음 자동 배치부터 반영됩니다':'⛔ 전년도 반 고르게 섞기 미사용');
+}
+function updateMixPrevUI(){
+  const cb=document.getElementById('opt-mix-prev');if(cb)cb.checked=mixPrevClass;
+  const lb=document.getElementById('mix-prev-label');if(lb)lb.style.background=mixPrevClass?'var(--primary-light)':'var(--surface2)';
+}
+// 전년도 반 식별 키 (같은 기준학년 안에서 반 번호)
+function prevKey(s){return s.grade+'-'+s.cls;}
+// 전년도 반 × 새 반 인원 행렬과 치우침 점수
+function buildPrevMatrix(){
+  const byId={};students.forEach(s=>{byId[s.id]=s;});
+  const m={},tot={};
+  classes.forEach(c=>{(assignments[c.id]||[]).forEach(id=>{const s=byId[id];if(!s)return;const k=prevKey(s);
+    if(!m[k])m[k]={};m[k][c.id]=(m[k][c.id]||0)+1;tot[k]=(tot[k]||0)+1;});});
+  return {m,tot};
+}
+// ── 전년도 반 고르게 섞기: 조건이 똑같은 학생끼리만 맞바꿈 (다른 균형은 절대 변하지 않음) ──
+function spreadPrevClassBySwap(ruleLockedIds,limitIds){
+  if(classes.length<2)return 0;
+  const byId={};students.forEach(s=>{byId[s.id]=s;});
+  const BT=getBalanceTags();
+  const profile=s=>s.gender+'|'+BT.filter(t=>s.tags.includes(t)).sort().join(',');
+  const {m,tot}=buildPrevMatrix();
+  const nC=classes.length;
+  const get=(k,cid)=>(m[k]&&m[k][cid])||0;
+  const dev=(k,cid,v)=>{const d=v-tot[k]/nC;return d*d;};
+  // 교환 가능한 학생 목록 (특수교육·분리/동반 규칙 학생 제외)
+  const clsOfId={};classes.forEach(c=>(assignments[c.id]||[]).forEach(id=>{clsOfId[id]=c.id;}));
+  const movable=Object.keys(clsOfId).map(id=>byId[id]).filter(s=>s&&!s.tags.includes('도움')&&!ruleLockedIds.has(s.id)&&(!limitIds||limitIds.has(s.id)));
+  const groups={};movable.forEach(s=>{const p=profile(s);(groups[p]=groups[p]||[]).push(s);});
+  let swaps=0;
+  const maxIter=movable.length*3+10;
+  for(let iter=0;iter<maxIter;iter++){
+    let best=null,bestGain=1e-9;
+    Object.values(groups).forEach(g=>{
+      for(let i=0;i<g.length;i++)for(let j=i+1;j<g.length;j++){
+        const a=g[i],b=g[j];const X=clsOfId[a.id],Y=clsOfId[b.id];
+        if(X===Y)continue;const ka=prevKey(a),kb=prevKey(b);if(ka===kb)continue;
+        const before=dev(ka,X,get(ka,X))+dev(ka,Y,get(ka,Y))+dev(kb,X,get(kb,X))+dev(kb,Y,get(kb,Y));
+        const after=dev(ka,X,get(ka,X)-1)+dev(ka,Y,get(ka,Y)+1)+dev(kb,X,get(kb,X)+1)+dev(kb,Y,get(kb,Y)-1);
+        const gain=before-after;
+        if(gain>bestGain){bestGain=gain;best={a,b,X,Y,ka,kb};}
+      }
+    });
+    if(!best)break;
+    const {a,b,X,Y,ka,kb}=best;
+    assignments[X]=assignments[X].filter(id=>id!==a.id).concat(b.id);
+    assignments[Y]=assignments[Y].filter(id=>id!==b.id).concat(a.id);
+    clsOfId[a.id]=Y;clsOfId[b.id]=X;
+    m[ka][X]--;m[ka][Y]=(m[ka][Y]||0)+1;m[kb][Y]--;m[kb][X]=(m[kb][X]||0)+1;
+    swaps++;
+  }
+  return swaps;
+}
 let changesSinceExport=0;
 let isFinalized=false;
 function blockIfFinalized(){
@@ -2111,6 +2179,8 @@ function autoAssign(onlyNew){
 
   // ── 헬퍼 ──
   function genderCount(cid,g){return(assignments[cid]||[]).filter(id=>{const s=students.find(st=>st.id===id);return s&&s.gender===g;}).length;}
+  // 동점 처리용(최하위): 이 반에 이미 있는 "전년도 같은 반" 학생 수
+  function prevCount(cid,s){if(!mixPrevClass)return 0;const k=prevKey(s);return(assignments[cid]||[]).filter(id=>{const t=students.find(st=>st.id===id);return t&&prevKey(t)===k;}).length;}
 
   // ── 동반·분리 규칙을 배치 전에 분석하여 동반 그룹을 확정 ──
   // 동반 규칙으로 연결된 학생들을 Union-Find로 묶어 "동반 그룹" 생성
@@ -2158,13 +2228,17 @@ function autoAssign(onlyNew){
           if(d!==0)return d;
           const gd=genderCount(a.id,s.gender)-genderCount(b.id,s.gender);
           if(gd!==0)return gd;
-          return classWeight(a.id)-classWeight(b.id);
+          const wd=classWeight(a.id)-classWeight(b.id);
+          if(wd!==0)return wd;
+          return prevCount(a.id,s)-prevCount(b.id,s);
         })[0];
       } else {
         tc=[...clsList].sort((a,b)=>{
           const gd=genderCount(a.id,s.gender)-genderCount(b.id,s.gender);
           if(gd!==0)return gd;
-          return classWeight(a.id)-classWeight(b.id);
+          const wd=classWeight(a.id)-classWeight(b.id);
+          if(wd!==0)return wd;
+          return prevCount(a.id,s)-prevCount(b.id,s);
         })[0];
       }
       assignments[tc.id]=assignments[tc.id]||[];assignments[tc.id].push(s.id);
@@ -2196,7 +2270,9 @@ function autoAssign(onlyNew){
       if(d!==0)return d;
       const gd=genderCount(a.id,s.gender)-genderCount(b.id,s.gender);
       if(gd!==0)return gd;
-      return classWeight(a.id)-classWeight(b.id);
+      const wd=classWeight(a.id)-classWeight(b.id);
+      if(wd!==0)return wd;
+      return prevCount(a.id,s)-prevCount(b.id,s);
     })[0];
     assignments[tc.id]=assignments[tc.id]||[];assignments[tc.id].push(s.id);
     helpCount[tc.id]++;
@@ -2347,6 +2423,10 @@ function autoAssign(onlyNew){
     const bestId=Object.keys(counts).sort((a,b)=>counts[b]-counts[a])[0];
     placed.forEach(id=>{const c=clsOf(id);if(c.id!==bestId){assignments[c.id]=assignments[c.id].filter(x=>x!==id);assignments[bestId].push(id);}});
   });
+
+  // ── STEP 9 (최하위): 전년도 반 고르게 섞기 — 조건이 똑같은 학생끼리만 맞바꿔 다른 균형은 그대로 유지 ──
+  // "새 학생만 배정" 모드에서는 새 학생끼리만 맞바꿔 기존(수동 조정 포함) 배치를 건드리지 않음
+  if(mixPrevClass)spreadPrevClassBySwap(ruleLockedIds,onlyNew?poolIds:null);
 
   lastAddedIds=new Set();
   unassigned=allPool.filter(s=>!isAssigned(s)).map(s=>s.id);
@@ -2637,7 +2717,28 @@ function renderStats(){
     html+=`<tr><td>${displayIcon} ${displayLabel}</td>${vals.map(v=>`<td>${v}명</td>`).join('')}<td class="${mx-mn<=1?'balance-ok':mx-mn<=2?'balance-warn':'balance-bad'}">${mx-mn}</td></tr>`;
   });
   html+=`</tbody></table></div></div>`;
+  html+=renderPrevClassTableHtml();
   c.innerHTML=html;
+}
+// 전년도 반 → 새 반 분포 (반별 고르게 흩어졌는지 확인용)
+function getPrevClassRows(){
+  const {m,tot}=buildPrevMatrix();
+  const keys=Object.keys(tot).sort((a,b)=>{const[ga,ca]=a.split('-').map(Number),[gb,cb]=b.split('-').map(Number);return ga-gb||ca-cb;});
+  return keys.map(k=>{
+    const vals=classes.map(c=>(m[k]&&m[k][c.id])||0);
+    return {label:`${k.split('-')[1]}반`,total:tot[k],vals,diff:Math.max(...vals)-Math.min(...vals)};
+  });
+}
+function renderPrevClassTableHtml(){
+  const rows=getPrevClassRows();
+  if(!rows.length)return '';
+  let h=`<div class="card"><div class="card-title">🔀 전년도 반 → 새 반 분포 <span style="font-weight:400;font-size:.8rem;color:var(--text-sub)">(편차가 작을수록 고르게 섞임 · ${mixPrevClass?'자동 섞기 사용 중':'자동 섞기 미사용'})</span></div><div style="overflow-x:auto"><table class="balance-table">
+    <thead><tr><th>전년도 반</th>${classes.map(cls=>`<th>${cls.name}</th>`).join('')}<th>편차</th></tr></thead><tbody>`;
+  rows.forEach(r=>{
+    h+=`<tr><td>${r.label} <small style="color:var(--text-muted)">(${r.total}명)</small></td>${r.vals.map(v=>`<td>${v}명</td>`).join('')}<td class="${r.diff<=1?'balance-ok':r.diff<=2?'balance-warn':'balance-bad'}">${r.diff}</td></tr>`;
+  });
+  h+=`</tbody></table></div></div>`;
+  return h;
 }
 
 function getRuleNoteSuffix(studentId){
@@ -2853,7 +2954,15 @@ async function exportExcel(){
   addSR('남학생',classes.map(c=>(assignments[c.id]||[]).filter(id=>students.find(s=>s.id===id)?.gender==='남').length));
   addSR('여학생',classes.map(c=>(assignments[c.id]||[]).filter(id=>students.find(s=>s.id===id)?.gender==='여').length));
   getBalanceTags().forEach(tag=>{const vals=classes.map(c=>(assignments[c.id]||[]).filter(id=>students.find(s=>s.id===id)?.tags.includes(tag)).length);if(vals.some(v=>v>0))addSR(tagLabel(tag),vals);});
-  ws2.columns.forEach((col,i)=>{col.width=i===0?18:12;});
+  // 전년도 반 → 새 반 분포
+  const prevRows=getPrevClassRows();
+  if(prevRows.length){
+    ws2.addRow([]);
+    const ph=ws2.addRow(['전년도 반 → 새 반',...classes.map(c=>c.name),'편차']);
+    ph.eachCell(cell=>{cell.font={bold:true,color:{argb:'FFFFFFFF'}};cell.fill={type:'pattern',pattern:'solid',fgColor:{argb:'FF1E3A5F'}};cell.alignment={horizontal:'center'};});
+    prevRows.forEach(r=>addSR(`${srcGradeNum}학년 ${r.label}(${r.total}명)`,r.vals));
+  }
+  ws2.columns.forEach((col,i)=>{col.width=i===0?22:12;});
 
   const buf=await wb.xlsx.writeBuffer();
   const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
@@ -2946,6 +3055,7 @@ function resetAppState(){
   selectedSrcGrades=new Set(['5']);
   dragStudentId=null;
   doumWeight=2;
+  mixPrevClass=true;updateMixPrevUI();
   changesSinceExport=0;
   isFinalized=false;
   tagTargets={'우수':3,'부진':3,'지도':3};
@@ -3064,7 +3174,7 @@ function showToast(msg,type){
 
 // ── 세션 저장/복원 ──
 const SESSION_KEY='bpe_session';
-function saveSession(){try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({students,classes,assignments,rules,selectedSrcGrades:[...selectedSrcGrades],enabledTags:[...enabledTags],customTagDefs,lastDownloadedVersionId,doumWeight,tagTargets,changesSinceExport,isFinalized,numCurrentClasses}));}catch(e){}}
+function saveSession(){try{sessionStorage.setItem(SESSION_KEY,JSON.stringify({students,classes,assignments,rules,selectedSrcGrades:[...selectedSrcGrades],enabledTags:[...enabledTags],customTagDefs,lastDownloadedVersionId,doumWeight,tagTargets,changesSinceExport,isFinalized,numCurrentClasses,mixPrevClass}));}catch(e){}}
 function sanitizeEnabledTags(rawArray){
   if(!rawArray)return new Set(TAG_DEFS.map(t=>t.key));
   const validKeys=new Set(allTagDefs().map(t=>t.key));
@@ -3080,6 +3190,8 @@ function loadSession(){
     enabledTags=sanitizeEnabledTags(data.enabledTags);
     lastDownloadedVersionId=data.lastDownloadedVersionId||null;
     doumWeight=data.doumWeight||2;
+    mixPrevClass=data.mixPrevClass!==false;
+    updateMixPrevUI();
     const defaultTargets={'우수':3,'부진':3,'지도':3};
     tagTargets=data.tagTargets?Object.assign({},defaultTargets,data.tagTargets):defaultTargets;
     changesSinceExport=data.changesSinceExport||0;
